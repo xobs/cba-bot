@@ -90,7 +90,6 @@ class BotPersonality():
         self.fetch_thread.start()
 
     def doWorkRequeue(self):
-        print "Bot " + self.name + " running workqueue..."
         if (self.running):
             self.queueBot() # Requeue in case of crash
             self.executeCmd()
@@ -121,12 +120,16 @@ class BotPersonality():
         cmds = sorted(cmds, key=lambda cmd: cmd['id'])
 
         print "Most recent command: " + cmds[-1]["command"]
+        return self.adminCommand(cmds[-1]["command"])
 
     def parseArgs(self, cmdline):
         l = []
         for a in self.parseArgsYield(cmdline):
             l.append(a.lstrip('"').rstrip('"'))
         return l
+
+    def adminCommand(self, args):
+        return
 
 
 class DonBot(BotPersonality):
@@ -225,6 +228,24 @@ class MicroTron(BotPersonality):
 class GavelMaster(BotPersonality):
     """Act as auction-master"""
     isRunning = False
+    bidAmountNotFound = "To bid, say 'bid AMMOUNT'. For example, 'bid $10'."
+    bidErrorString = "I'm sorry, I couldn't understand your bid amount."
+    bidNotEnough = "You must bid at least $%s"
+    bidNewLeader = "%s bids $%s and is currently winning"
+    youAreNotOps = "Only ops can control this bot"
+    abortAuction = "Sorry folks, we're going to stop this auction without a winner"
+    startAuction1 = "We're auctioning off %s"
+    startAuction2 = "We'll start the auction off at $%s"
+    endAuctionNoWinner = "The auction has finished, but we had no takers"
+    endAuctionWinner = "The auction is over!  Congratulations to the winner, %s."
+    newIncrement = "Bids now must be at least $%s more than the current high bid"
+    withdrawBid = "Oops, the bid from %s has been withdrawn"
+    withdrawBidNewWinner = "The bid from %s at $%s is now winning"
+    withdrawBidStartOver = "We're starting over again.  The opening bid is $%s"
+
+    # These two must match
+    addBidMessage = "Add your bid by saying 'bid [amount]'"
+    bidPrefix = "bid"
 
     def __init__(self, connection, interval, variance, cmdurl):
         BotPersonality.__init__(self, connection, interval, variance, cmdurl)
@@ -251,42 +272,41 @@ class GavelMaster(BotPersonality):
         if not self.auctionActive():
             return
 
-        if not message.lower().startswith("bid "):
+        if not message.lower().startswith(self.bidPrefix + " "):
             return
 
         splitted = message.split(" ")
         if (len(splitted) <= 1):
-            self.sendPrivateMessage(user, "To bid, say 'bid AMMOUNT'."
-                    + " For example, 'bid $10'.")
+            self.sendPrivateMessage(user, self.bidAmountNotFound)
             return
 
         try:
             bid = int(splitted[1].strip("$,").split('.')[0])
         except:
-            self.sendPrivateMessage(user, "I'm sorry, I couldn't understand "
-                    + "your bid amount.")
+            self.sendPrivateMessage(user, self.bidErrorString)
             return
 
         if bid == self.hibid and len(self.bid_history) == 0:
             pass
         elif bid < self.hibid + self.increment:
-            self.sendPrivateMessage(user, "You must bid at least $"
+            self.sendPrivateMessage(user, self.bidNotEnough %
                     + str(self.hibid + self.increment))
             return
 
         self.hibid = bid
         self.current_winner = user
         self.bid_history.append((user, bid))
-        self.sendMessage(user + " bids $" + str(bid)
-                + " and is currently winning")
+        self.sendMessage(self.bidNewLeader % (user, str(bid)))
 
     def receivePrivateMessage(self, user, message):
         # If user is op ANYWHERE, allow it
         if not self.isOp(user):
-            self.sendPrivateMessage(user, "Only ops can control this bot")
+            self.sendPrivateMessage(user, self.youAreNotOps)
             return
 
-        argv = self.parseArgs(message)
+        return self.adminCommand(self.parseArgs(message))
+
+    def adminCommand(self, argv):
         if not argv or len(argv) < 1:
             self.sendHelp(user)
 
@@ -297,8 +317,7 @@ class GavelMaster(BotPersonality):
             self.addNew(user, argv)
 
         elif argv[0] == "abort":
-            self.sendMessage("Sorry folks, we're going to stop this auction "
-                    + "without a winner")
+            self.sendMessage(self.abortAuction)
             self.setAuctionActive(False)
 
         elif argv[0] == "finish":
@@ -325,17 +344,16 @@ class GavelMaster(BotPersonality):
               + "\nfinish")
 
     def startAuction(self):
-        self.sendMessage("We're auctioning off " + self.description)
-        self.sendMessage("We'll start the auction off at $" + str(self.startbid))
+        self.sendMessage(self.startAuction1 % self.description)
+        self.sendMessage(self.startAuction2 % str(self.startbid))
         self.sayAddBid()
         self.setAuctionActive(True)
 
     def endAuction(self):
         if (self.current_winner == ""):
-            self.sendMessage("The auction has finished, but we had no takers")
+            self.sendMessage(self.endAuctionNoWinner)
         else:
-            self.sendMessage("The auction is over!  Congratulations "
-                    "to the winner, " + self.current_winner + ".")
+            self.sendMessage(self.endAuctionWinner % self.current_winner)
         self.setAuctionActive(False)
 
     def addNew(self, user, argv):
@@ -374,32 +392,28 @@ class GavelMaster(BotPersonality):
             return
 
         self.increment = inc
-        self.sendMessage("Bids now must be at least $" + str(inc) 
-                + " more than the current high bid")
+        self.sendMessage(self.newIncrement % str(inc))
 
     def rejectBid(self, user, argv):
         # Inform everyone that a bid has been rejected
         if len(self.bid_history) > 0:
             (rej_user, rej_bid) = self.bid_history.pop()
-            self.sendMessage("Oops, the bid from " + rej_user
-                    + " has been withdrawn")
+            self.sendMessage(self.withdrawBid % rej_user)
 
         # Either post the previous high-bid, or restart the auction
         if len(self.bid_history) > 0:
             (new_user, new_bid) = self.bid_history[-1]
             self.current_winner = new_user
             self.hibid          = new_bid
-            self.sendMessage("The bid from " + new_user
-                    + " at $" + str(new_bid) + " is now winning")
+            self.sendMessage(self.withdrawBidNewWinner % (new_user, str(new_bid)))
         else:
             self.current_winner = ""
             self.hibid          = self.startbid
-            self.sendMessage("We're starting over again.  "
-                    + "The opening bid is $" + str(self.startbid))
+            self.sendMessage(self.withdrawBidStartOver % str(self.startbid))
         self.sayAddBid()
 
     def sayAddBid(self):
-        self.sendMessage("Add your bid by saying 'bid [amount]'")
+        self.sendMessage(self.addBidMessage)
 
 
 class PollBoy(BotPersonality):
@@ -459,7 +473,9 @@ class PollBoy(BotPersonality):
             self.sendPrivateMessage(user, "Only ops can control this bot")
             return
 
-        argv = self.parseArgs(message)
+        return self.adminCommand(self.parseArgs(message))
+
+    def adminCommand(self, argv):
         if not argv or len(argv) < 1:
             self.sendHelp(user)
 
