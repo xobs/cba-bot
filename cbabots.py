@@ -419,6 +419,15 @@ class GavelMaster(BotPersonality):
 class PollBoy(BotPersonality):
     """Perform an informal poll in the channel"""
     isRunning = False
+    votePrefix = "vote"
+    voteNotRecognized = "To vote, say 'vote [number]'. For example, 'vote 2'."
+    voteCommandHelp = "Say 'vote [number] to vote"
+    voteNotANumber = "I'm sorry, I couldn't understand your vote."
+    voteOutOfRange = "Please vote on a number between 1 and %s"
+    youAreNotOps = "Only ops can control this bot"
+    startPollMessage = "We want to know: %s"
+    resultsStart = "Results:"
+    resultsLine = "%s    %s"
 
     def __init__(self, connection, interval, variance, cmdurl):
         BotPersonality.__init__(self, connection, interval, variance, cmdurl)
@@ -444,25 +453,22 @@ class PollBoy(BotPersonality):
         if not self.pollActive():
             return
 
-        if not message.lower().startswith("pick "):
+        if not message.lower().startswith(self.votePrefix + " "):
             return
 
         splitted = message.split(" ")
         if (len(splitted) <= 1):
-            self.sendPrivateMessage(user, "To vote, say 'pick [number]'."
-                    + " For example, 'pick 2'.")
+            self.sendPrivateMessage(user, self.voteNotRecognized)
             return
 
         try:
             choice = int(splitted[1])-1
         except:
-            self.sendPrivateMessage(user, "I'm sorry, I couldn't understand "
-                    + "your vote.")
+            self.sendPrivateMessage(user, self.voteNotANumber)
             return
 
         if choice < 0 or choice > len(self.options)-1:
-            self.sendPrivateMessage(user, "Please vote on a number between "
-                    "1 and " + str(len(self.options)))
+            self.sendPrivateMessage(user, self.voteOutOfRange % str(len(self.options)))
             return
 
         self.votes[user] = choice
@@ -470,7 +476,7 @@ class PollBoy(BotPersonality):
     def receivePrivateMessage(self, user, message):
         # If user is op ANYWHERE, allow it
         if not self.isOp(user):
-            self.sendPrivateMessage(user, "Only ops can control this bot")
+            self.sendPrivateMessage(user, self.youAreNotOps)
             return
 
         return self.adminCommand(self.parseArgs(message))
@@ -504,28 +510,27 @@ class PollBoy(BotPersonality):
               + "\nfinish")
 
     def startPoll(self):
-        self.sendMessage("We want to know: " + self.description)
+        self.sendMessage(self.startPollMessage % self.description)
         for i in range(0, len(self.options)):
             self.sendMessage(str(int(i+1)) + ": " + self.options[i])
-        self.sendMessage("Say 'pick [number] to vote")
+        self.sendMessage(self.voteCommandHelp)
         self.setPollActive(True)
 
     def endPoll(self):
-        totals = []
-        winning = 0
-        for i in range(0, len(self.options)):
-            totals.append(0)
+        totals = {}
+        results = []
+        for key in self.options:
+            totals[key].count = 0
+            totals[key].name = key
 
         for option in self.votes.values():
-            totals[int(option)] = totals[int(option)] + 1
+            totals[self.options[option]] = totals[self.options[option]] + 1
 
-        self.sendMessage("Results:")
-        for i in range(0, len(self.options)):
-            self.sendMessage(str(totals[i]) + " - " + self.options[i])
-            if totals[i] > totals[winning]:
-                winning = i
+        results = sorted(totals, key=lambda tot: tot['count'])
 
-        self.sendMessage("And the winner is: " + self.options[winning])
+        self.sendMessage(self.resultsStart)
+        for tot in results:
+            self.sendMessage(self.resultsLine % (str(tot.count), tot.name))
         self.setPollActive(False)
 
     def addNew(self, user, argv):
