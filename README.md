@@ -57,6 +57,30 @@ All bots accept the following variables:
 * **interval**: The minimum number of seconds to wait between messages.
 * **variance**: In order to keep things interesting, a random number of
 seconds (between 0 and *variance*) to add to the interval on each loop.
+* **cmdurl**: A path to a JSON file containing bot commands.
+
+All bots support a "cmdurl" flag, though it really only makes sense for
+interactive bots.  You may supply a URL from which commands will occasionally be
+polled, at the time specified in **interval**.  The URL should contain a JSON
+file as an array of lists:
+
+{
+    [
+        {
+            "id": 1,
+            "command": ["argv[0]", "argv[1]", "argv[2]"]
+        },
+        {
+            "id": 2,
+            "command": ["cmdname", "firstarg"]
+        }
+    ]
+}
+
+At startup, the bot will poll the URL and find the highest-numbered id.  It will
+not execute any commands.  However, on subsequent polls, it will look for an id
+that is greater than this id, and execute the corresponding command.  If more
+than one id is larger, then it will only execute the largest id found.
 
 
 Donbot

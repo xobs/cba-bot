@@ -13,14 +13,18 @@ import strict_rfc3339
 class BotPersonality():
     """Common interface for various bot personalities"""
     running = False
+    lastid = 0
+    name = None
+    fetch_thread = None
 
-    def __init__(self, connection, interval, variance):
+    def __init__(self, connection, interval, variance, cmdurl):
         self.name       = self.__class__.__name__
         self.connection = connection
         self.running    = False
         self.interval   = interval
         self.variance   = variance
         self.opsets     = {}
+        self.cmdurl     = cmdurl
         print "BotPersonality activate!  Form of: " + self.name
 
     def setConnection(self, connection):
@@ -30,7 +34,8 @@ class BotPersonality():
         """Stop a bot from making updates (e.g. if a connection fails)"""
         print "Pausing BotPersonality " + self.name
         self.running = False
-        self.fetch_thread.cancel()
+        if self.fetch_thread is not None:
+            self.fetch_thread.cancel()
 
     def resumeBot(self):
         """Resume a bot (e.g. when connecting, or when reconnecting)"""
@@ -80,15 +85,16 @@ class BotPersonality():
 
     def queueBot(self):
         """Queue the fetch function to run agan after 'interval' seconds"""
-        # Retrigger this function, if we're still running
-        if (self.running):
-            delay = self.interval + random.randrange(self.variance)
-            self.fetch_thread = threading.Timer(delay, self.doWorkRequeue)
-            self.fetch_thread.start()
+        delay = self.interval + random.randrange(self.variance)
+        self.fetch_thread = threading.Timer(delay, self.doWorkRequeue)
+        self.fetch_thread.start()
 
     def doWorkRequeue(self):
-        self.queueBot() # Requeue in case of crash
-        self.doWork()
+        print "Bot " + self.name + " running workqueue..."
+        if (self.running):
+            self.queueBot() # Requeue in case of crash
+            self.executeCmd()
+            self.doWork()
 
     def doWork(self):
         print "Error: doWork not implemented"
@@ -99,6 +105,22 @@ class BotPersonality():
             for part in unquoted.split():
                 yield part
             yield gen.next().join('""')
+
+    def executeCmd(self):
+        cmds = {}
+        if self.cmdurl is None:
+            return
+
+        try:
+            cmds = loads(urlopen(self.cmdurl).read())
+        except:
+            print "Couldn't load JSON"
+            return
+
+        # Re-sort the data by timestamp
+        cmds = sorted(cmds, key=lambda cmd: cmd['id'])
+
+        print "Most recent command: " + cmds[-1]["command"]
 
     def parseArgs(self, cmdline):
         l = []
@@ -112,9 +134,9 @@ class DonBot(BotPersonality):
     seen_keys = set()
     new_data = []
 
-    def __init__(self, connection, interval, variance,
+    def __init__(self, connection, interval, variance, cmdurl,
             url, reportlast=5, ignoreolderthan=3600):
-        BotPersonality.__init__(self, connection, interval, variance)
+        BotPersonality.__init__(self, connection, interval, variance, cmdurl)
         self.url                = url
         self.reportlast         = reportlast
         self.ignoreolderthan    = ignoreolderthan
@@ -192,8 +214,8 @@ class DonBot(BotPersonality):
 class MicroTron(BotPersonality):
     """Act as a microphone, and make regular announcements"""
 
-    def __init__(self, connection, interval, variance, message):
-        BotPersonality.__init__(self, connection, interval, variance)
+    def __init__(self, connection, interval, variance, cmdurl, message):
+        BotPersonality.__init__(self, connection, interval, variance, cmdurl)
         self.message    = message
 
     def doWork(self):
@@ -204,8 +226,8 @@ class GavelMaster(BotPersonality):
     """Act as auction-master"""
     isRunning = False
 
-    def __init__(self, connection, interval, variance):
-        BotPersonality.__init__(self, connection, interval, variance)
+    def __init__(self, connection, interval, variance, cmdurl):
+        BotPersonality.__init__(self, connection, interval, variance, cmdurl)
         self.hibid          = 0
         self.increment      = 0
         self.description    = ""
@@ -384,8 +406,8 @@ class PollBoy(BotPersonality):
     """Perform an informal poll in the channel"""
     isRunning = False
 
-    def __init__(self, connection, interval, variance):
-        BotPersonality.__init__(self, connection, interval, variance)
+    def __init__(self, connection, interval, variance, cmdurl):
+        BotPersonality.__init__(self, connection, interval, variance, cmdurl)
         self.description    = ""
         self.isRunning      = False
         self.current_winner = ""
