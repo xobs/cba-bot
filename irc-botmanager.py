@@ -162,6 +162,7 @@ class IRCConnectionManager(protocol.ClientFactory):
     config = None
     should_reconnect = True
     clock = None
+    bot = None
 
     def __init__(self, name, channels, nickname, realname,
             username, password):
@@ -175,6 +176,8 @@ class IRCConnectionManager(protocol.ClientFactory):
             self.channels.append(channel.encode('ascii', 'ignore'))
 
     def setBot(self, bot):
+        if self.bot is not None:
+            self.bot.pauseBot()
         self.bot = bot
 
     def setConnection(self, connection):
@@ -191,6 +194,10 @@ class IRCConnectionManager(protocol.ClientFactory):
 
     def stopReconnecting(self):
         self.should_reconnect = False
+
+    def stopBot(self):
+        if self.bot is not None:
+            self.bot.pauseBot()
 
     def buildProtocol(self, addr):
         p = IRCConnection()
@@ -224,19 +231,19 @@ class IRCConnectionManager(protocol.ClientFactory):
 def createBot(connectionManager, srv):
     if srv['personality'] == "donbot":
         return cbabots.DonBot(connectionManager,
-                                srv['interval'], srv['variance'],
+                                srv['interval'], srv['variance'], srv['cmdurl'],
                                 srv['url'],
                                 srv['reportlast'], srv['ignoreolderthan'])
     elif srv['personality'] == "microtron":
         return cbabots.MicroTron(connectionManager,
-                                srv['interval'], srv['variance'],
+                                srv['interval'], srv['variance'], srv['cmdurl'],
                                 srv['message'].encode('ascii', 'ignore'))
     elif srv['personality'] == "gavelmaster":
         return cbabots.GavelMaster(connectionManager,
-                                srv['interval'], srv['variance'])
+                                srv['interval'], srv['variance'], srv['cmdurl'])
     elif srv['personality'] == "pollboy":
         return cbabots.PollBoy(connectionManager,
-                                srv['interval'], srv['variance'])
+                                srv['interval'], srv['variance'], srv['cmdurl'])
     else:
         raise Exception("Unknown or missing bot personality: "
                 + srv['personality'])
@@ -251,9 +258,8 @@ def reloadConfig(url, servers):
         return
 
     for key, srv in srvdict.iteritems():
-        seen_bots.add(key)
-
-        try:
+#        try:
+            seen_bots.add(key)
             # Set up defaults for parameters that are undefined in the bot
             if 'variance' not in srv:
                 srv['variance'] = 0
@@ -263,16 +269,24 @@ def reloadConfig(url, servers):
                 srv['password'] = ''
             if 'port' not in srv:
                 srv['port'] = 6667
+            if 'cmdurl' not in srv:
+                srv['cmdurl'] = None
 
-            if key in servers and dumps(servers[key].getConfig()) == dumps(srv):
-                continue
+            if key in servers:
+                if dumps(servers[key].getConfig()) == dumps(srv):
+                    continue
+                else:
+                    print "Config changed!"
+                    print "   Old config: " + dumps(servers[key].getConfig())
+                    print "   New config: " + dumps(srv)
 
             # Disconnect the bot, if it exists already
             if key in servers:
-                print "Reloading config for bot " + key
+                print "Config changed for bot " + key + ', reloading...'
                 servers[key].stopReconnecting()
                 servers[key].stopFactory()
                 servers[key].getConnection().disconnect()
+                servers[key].stopBot()
             else:
                 print "Adding bot (cfg: " + key + ")"
 
@@ -286,8 +300,8 @@ def reloadConfig(url, servers):
                                     srv['port'],
                                     servers[key]))
             servers[key].setConfig(srv)
-        except:
-            pass
+#        except:
+#            pass
 
     # If a bot has disappeared from the config, disconnect it.
     for key in servers.keys():
@@ -296,7 +310,9 @@ def reloadConfig(url, servers):
             servers[key].stopReconnecting()
             servers[key].stopFactory()
             servers[key].getConnection().disconnect()
-            servers.pop(key)
+            servers[key].stopBot()
+            servers[key].setBot(None)
+            del servers[key]
     return servers
 
 
