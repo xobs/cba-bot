@@ -60,7 +60,10 @@ class Server(Thread):
 			else:
 				for l in [l for l in split('\r\n',line) if 'PRIVMSG #' in l]:
 					m = search(':(.*?)!.* PRIVMSG (#[^ ,]+) :(.+)',l)
-					msg = '{'+m.group(1)+'} '+m.group(3)
+					if (m.group(3)[:7] == "\x01ACTION"):
+						msg = m.group(1)+'} '+m.group(3)[8:]
+					else:
+						msg = '{'+m.group(1)+'}: '+m.group(3)
 					print "Message on " + self.servername + m.group(2) + ": " + msg
 					for t in self.targets:
 						t.put(msg)
