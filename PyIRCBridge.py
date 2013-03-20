@@ -46,29 +46,32 @@ class Server(Thread):
 				done = True
 				print '****Socket on ' + self.host + ' closed.'
 			else:
-				for line in [x for x in split(EOL,lines) if x != '']:
-					print '****RAW:'+line
-					if line.find('NOTICE ' + self.nick + ' :This nickname is registered.')!=-1:
-						print "Identify to nickserv...\n"
-						sendtosocket(self.s,'PRIVMSG NickServ IDENTIFY '+self.nspass)
-					if (line.find('You are now identified for') != -1) or (line.find('End of /MOTD command') != -1):
-						print '**************JOINING CHANNELS ON ' + self.host
-						for chan in self.channels:
-							sendtosocket(self.s,'JOIN '+chan)
-							print '****Joined channel '+chan+' on '+self.host
-					elif (line.split()[0]=='PING'):
-						sendtosocket(self.s,'PONG '+line.rstrip().split()[1])
-						print '****Sending:'+'PONG '+line.rstrip().split()[1][1:]
-					else:
-						for l in [l for l in split(EOL,line) if 'PRIVMSG #' in l]:
-							m = search(':(.*?)!.* PRIVMSG (#[^ ,]+) :(.+)',l)
-							if (m.group(3)[:7] == "\x01ACTION"):
-								msg = '{'+m.group(1)+'} '+m.group(3)[8:]
-							else:
-								msg = '{'+m.group(1)+'}: '+m.group(3)
-							print "Message on " + self.servername + m.group(2) + ": " + msg
-							for t in self.targets:
-								t.put(msg)
+				try:
+					for line in [x for x in split(EOL,lines) if x != '']:
+						print '****RAW:'+line
+						if line.find('NOTICE ' + self.nick + ' :This nickname is registered.')!=-1:
+							print "Identify to nickserv...\n"
+							sendtosocket(self.s,'PRIVMSG NickServ IDENTIFY '+self.nspass)
+						if (line.find('You are now identified for') != -1) or (line.find('End of /MOTD command') != -1):
+							print '**************JOINING CHANNELS ON ' + self.host
+							for chan in self.channels:
+								sendtosocket(self.s,'JOIN '+chan)
+								print '****Joined channel '+chan+' on '+self.host
+						elif (line.split()[0]=='PING'):
+							sendtosocket(self.s,'PONG '+line.rstrip().split()[1])
+							print '****Sending:'+'PONG '+line.rstrip().split()[1][1:]
+						else:
+							for l in [l for l in split(EOL,line) if 'PRIVMSG #' in l]:
+								m = search(':(.*?)!.* PRIVMSG (#[^ ,]+) :(.+)',l)
+								if (m.group(3)[:7] == "\x01ACTION"):
+									msg = '{'+m.group(1)+'} '+m.group(3)[8:]
+								else:
+									msg = '{'+m.group(1)+'}: '+m.group(3)
+								print "Message on " + self.servername + m.group(2) + ": " + msg
+								for t in self.targets:
+									t.put(msg)
+				except:
+					print "Exception thrown on processing line(s). Not terminating execution. Error:", sys.exc_info()[0]
 
 class Repeater(Thread):
 	def __init__(self,sock,chan,**kwargs):
