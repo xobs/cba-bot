@@ -9,6 +9,9 @@ from threading import Thread
 from time import sleep
 from json import loads, dumps
 from re import search, split, sub
+from urllib2 import urlopen
+import locale
+locale.setlocale(locale.LC_ALL, 'en_US')
 
 IDENT='CBA Testbot'
 REALNAME='Cloudboat Armada'
@@ -87,6 +90,8 @@ class Repeater(Thread):
 
 servers = {} 
 srvdict = loads(os.environ["IRCSERVERS"])
+irURL = "http://imraising.com/" + os.environ["IR_ACCOUNT"] + "/json/livedata.jsonp"
+pollrate = int(os.environ["POLLRATE"])
 for key in srvdict.keys():
 	srv=srvdict[key]
 	servers[key] = Server(key,srv['host'],srv['channels'],srv['nick'],srv['port'],srv['serverpass'],srv['nspass'])
@@ -101,6 +106,28 @@ for sub in loads(os.environ['IRCSUBS']):
 	r.start()
 	servers[sub[1]].targets+=[r.q]
 
+mostrecent = int(os.environ['INITTIME'])
 while True:
-	#print '++++Received line: ||' + q1.get()
+	jsonp = urlopen(irURL).read()
+	data = loads(jsonp[13:-1])
+	messages = []
+	newrecent = 0;
+	for d in data['donation']:
+		if d['time'] > mostrecent:
+			if d['time'] > newrecent:
+				newrecent = d['time']
+			messages.append('New ' + locale.currency(d['amount']) + ' donation from ' + d['screen'] + '! Thanks for the support!')
+	if mostrecent > 0 and len(messages) > 0:
+		for msg in messages:
+			for srv in servers.values():
+				for chan in srv.channels:
+					sendtosocket(srv.s,'PRIVMSG '+chan+' :'+msg+EOL)
+			sleep(1)
+	else:
+		print ("No messages newer than timestamp: " + mostrecent)
+	mostrecent = newrecent
+	sleep(pollrate)
+	#currency( 188518982.18, grouping=True )
+	#d['donation'][2]
+	#{u'comment': u'test', u'amount': 1, u'time': 1365697171403, u'screen': u'tester', u'custom': u''}
 	pass
