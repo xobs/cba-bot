@@ -11,7 +11,10 @@ from json import loads, dumps
 from re import search, split, sub
 from urllib2 import urlopen
 import locale
-locale.setlocale(locale.LC_ALL, 'en_US')
+try:
+	locale.setlocale(locale.LC_ALL, 'en_US')
+except:
+	locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 
 IDENT='CBA Testbot'
 REALNAME='Cloudboat Armada'
