@@ -127,7 +127,7 @@ while True:
 					sendtosocket(srv.s,'PRIVMSG '+chan+' :'+msg+EOL)
 			sleep(1)
 	else:
-		print ("No messages newer than timestamp: " + mostrecent)
+		print ("No messages newer than timestamp: " + str(mostrecent))
 	mostrecent = newrecent
 	sleep(pollrate)
 	#currency( 188518982.18, grouping=True )
