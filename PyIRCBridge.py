@@ -16,9 +16,9 @@ try:
 except:
 	locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 
-IDENT='CBA Testbot'
-REALNAME='Cloudboat Armada'
-OWNER='mrasmus' #The bot owner's nick
+IDENT='Bot'
+REALNAME=os.environ['IR_ACCOUNT']
+OWNER=os.environ['IR_ACCOUNT'] #The bot owner's nick
 EOL='\r\n'
 DEBUG=True
 
