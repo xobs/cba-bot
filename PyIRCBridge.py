@@ -16,15 +16,16 @@ try:
 except:
 	locale.setlocale(locale.LC_ALL, 'en_US.utf8')
 
-IDENT='Bot'
-REALNAME=os.environ['IR_ACCOUNT']
-OWNER=os.environ['IR_ACCOUNT'] #The bot owner's nick
+IDENT='CBA Testbot'
+REALNAME='Cloudboat Armada'
+OWNER='mrasmus' #The bot owner's nick
 EOL='\r\n'
 DEBUG=True
 
 def sendtosocket(s,msg):
 	print 'DEBUG:Sending message on socket ' + str(s.fileno()) + ':' + msg 
 	s.send(msg+EOL)
+
 
 class Server(Thread):
 	def __init__(self,name,host,channels,nick='cbirc',port=6667,serverpass=None,nspass=None,**kwargs):
@@ -108,6 +109,23 @@ for sub in loads(os.environ['IRCSUBS']):
 	r = Repeater(servers[sub[0]].s,sub[2])
 	r.start()
 	servers[sub[1]].targets+=[r.q]
+
+class Messenger(Thread):
+	def __init__(self,targets=None,message="Test message",period=300,**kwargs):
+		self.msg = message
+		self.servers = targets
+		self.interval=period
+		super(Messenger, self).__init__(**kwargs)
+
+	def run(self):
+		while True:
+			for srv in self.servers.values():
+				for chan in srv.channels:
+					sendtosocket(srv.s,'PRIVMSG '+chan+' :'+self.msg+EOL)
+			sleep(self.interval)
+				
+messenger = Messenger(servers,os.environ['MSG'],int(os.environ['MSGPERIOD']))
+messenger.start()
 
 mostrecent = int(os.environ['INITTIME'])
 while True:
