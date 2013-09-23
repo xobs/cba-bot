@@ -1,2 +1,2 @@
 web: python app.py
-worker: python PyIRCBridge.py
+worker: python cba-bot.py
