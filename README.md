@@ -16,8 +16,13 @@ run a command such as:
 
     cat >>environment <<EOF
     export INITTIME=0
-    export IRCSERVERS='{"TTV": {"username": "", "password": "", "realname": "Example Bot", "channels": ["#example"], "nick": "examplebot", "host": "irc.example.com", "port": 6667}}'
-    export IRCSUBS="[]"
+    export IRCSERVERS='{"TTV": {"username": "",
+                                "password": "",
+                                "realname": "Example Bot",
+                                "channels": ["#example"],
+                                "nick": "examplebot",
+                                "host": "irc.example.com",
+                                "port": 6667}}'
     export MSG="I'm just a bot.  I don't know a lot."
     export MSGPERIOD="15"
     export POLLRATE="10"

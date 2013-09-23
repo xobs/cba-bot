@@ -1,10 +1,16 @@
 r"""CBA channel bot, designed to assist us in reporting goings-on
 during the IGG marathon.
 
-It should be started with an environment set something like::
+It should be started with an environment set something like:
 
     INITTIME=0
-    IRCSERVERS='{"EX": {"username": "", "password": "", "realname": "Example Bot", "channels": ["#example"], "nick": "ExampleBot", "host": "irc.example.com", "port": 6667}}'
+    IRCSERVERS='{"EX": {"username": "",
+                        "password": "",
+                        "realname": "Example Bot",
+                        "channels": ["#example"],
+                        "nick": "ExampleBot",
+                        "host": "irc.example.com",
+                        "port": 6667}}'
     MSG="I'm just a bot.  I don't know a lot."
     MSGPERIOD="3600"
     POLLRATE="10"
@@ -26,8 +32,13 @@ from urllib2 import urlopen
 config = defaultdict(list, [
     ('DEBUG', False),
     ('INITTIME', '0'),
-    ('IRCSERVERS', '{"TTV": {"username": "", "password": "", "realname": "CBA Bot", "channels": ["#cba"], "nick": "QQMore", "host": "127.0.0.1", "port": 6667}}'),
-    ('IRCSUBS', "[]"),
+    ('IRCSERVERS', '{"IGG": {"username": "", '
+                          + '"password": "", '
+                          + '"realname": "CBA Bot", '
+                          + '"channels": ["#cba"], '
+                          + '"nick": "QQMore", '
+                          + '"host": "127.0.0.1", '
+                          + '"port": 6667}}'),
     ('MSG', "I'm just a bot.  I don't know a lot."),
     ('MSGPERIOD', "15"),
     ('POLLRATE', "10"),
