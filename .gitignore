@@ -34,3 +34,10 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# vim swapfiles
+*.swp
+*.swo
+
+# Local environment file
+environment
