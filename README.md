@@ -36,4 +36,4 @@ To debug the bot, add an environment variable "DEBUG" and set it to "True".
 
 To get more information on cba-bot, run:
 
-    pydoc ./cba-bot.py
+    pydoc ./irc-botmanager.py
