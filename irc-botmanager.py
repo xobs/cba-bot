@@ -137,7 +137,7 @@ if __name__ == '__main__':
             print "Found donbot"
             bots[key] = cbabots.DonBot(servers[key], srv['url'],
                                     srv['interval'], srv['variance'],
-                                    srv['reportlast'])
+                                    srv['reportlast'], srv['ignoreolderthan'])
         else:
             print "Unknown or missing bot personality"
 

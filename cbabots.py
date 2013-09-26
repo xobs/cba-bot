@@ -6,6 +6,7 @@ from json import loads, dumps
 from urllib2 import urlopen
 import threading
 import random
+import time
 import strict_rfc3339
 
 
@@ -43,12 +44,13 @@ class DonBot(BotPersonality):
     new_data = []
 
     def __init__(self, connection, url,
-            interval=15, variance=5, reportlast=5):
+            interval=15, variance=5, reportlast=5, ignoreolderthan=3600):
         BotPersonality.__init__(self, connection, "DonBot")
-        self.url      = url
-        self.interval = interval
-        self.variance = variance
-        self.reportlast = reportlast
+        self.url                = url
+        self.interval           = interval
+        self.variance           = variance
+        self.reportlast         = reportlast
+        self.ignoreolderthan    = ignoreolderthan
         random.seed()
 
     def pauseBot(self):
@@ -93,9 +95,20 @@ class DonBot(BotPersonality):
         # stuff all but the last /reportlast/ variables into the "seen_keys"
         # set, to prevent spamming the channel.
         if len(self.seen_keys) == 0:
-            while len(self.new_data) > self.reportlast:
-                obj = self.new_data.pop(0)
-                self.seen_keys.add(obj['pk'])
+            trimmed_list = []
+
+            # Only allow recent donations to be posted, and limit the list
+            # to /reportlast/ items.
+            # If an object is ignored, put its pk in the seen_keys set.
+            now = time.time()
+            for obj in self.new_data:
+                if (now - obj['timestamp']) < self.ignoreolderthan \
+                    and len(trimmed_list) < self.reportlast:
+                    trimmed_list.append(obj)
+                else:
+                    self.seen_keys.add(obj['pk'])
+
+            self.new_data = trimmed_list
             
         self.sendNextMessage()
 

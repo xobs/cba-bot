@@ -8,7 +8,7 @@ class TestFramework():
     bots = []
     def __init__(self):
         self.channel = "cba"
-        bot = DonBot(self, "http://localhost/~user/file.json", 1, 1)
+        bot = DonBot(self, "http://localhost/~user/file.json", 1, 1, 5, 144380)
         self.bots.append(bot)
 
     def pause(self):
