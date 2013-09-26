@@ -112,6 +112,12 @@ if __name__ == '__main__':
     for key, srv in srvdict.iteritems():
         if 'variance' not in srv:
             srv['variance'] = 0
+        if 'username' not in srv:
+            srv['username'] = ''
+        if 'password' not in srv:
+            srv['password'] = ''
+        if 'port' not in srv:
+            srv['port'] = 6667
 
         servers[key] = IRCConnectionManager(key,
                 srv['channels'], srv['nick'], srv['realname'],

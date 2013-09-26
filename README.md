@@ -41,7 +41,7 @@ parameters that must be specified in a given BOTS definition.
 All bots accept the following variables:
 
 * **host**: Hostname of the IRC server to connect to
-* **port**: Port number of the IRC server
+* **port**: Port number of the IRC server (defaults to 6667)
 * **username**: Username (if specified) to use with the IRC server
 * **password**: Password (if specified) to use with the IRC server
 * **realname**: The "real name" of the bot (optional)
