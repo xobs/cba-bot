@@ -14,11 +14,13 @@ class BotPersonality():
     """Common interface for various bot personalities"""
     running = False
 
-    def __init__(self, connection, name):
-        self.name = name
+    def __init__(self, connection, interval, variance):
+        self.name       = self.__class__.__name__
         self.connection = connection
-        self.running = False
-        print "BotPersonality activate!  Form of: " + name
+        self.running    = False
+        self.interval   = interval
+        self.variance   = variance
+        print "BotPersonality activate!  Form of: " + self.name
 
     def setConnection(self, connection):
         self.connection = connection
@@ -27,39 +29,17 @@ class BotPersonality():
         """Stop a bot from making updates (e.g. if a connection fails)"""
         print "Pausing BotPersonality " + self.name
         self.running = False
+        self.fetch_thread.cancel()
 
     def resumeBot(self):
         """Resume a bot (e.g. when connecting, or when reconnecting)"""
         print "Resuming BotPersonality" + self.name
         self.running = True
+        self.queueBot()
 
     def sendMessage(self, message):
         """Send a message to the configured channel"""
         self.connection.sendMessage(self, message)
-
-
-class DonBot(BotPersonality):
-    """Monitor donations and announce them as they come in"""
-    seen_keys = set()
-    new_data = []
-
-    def __init__(self, connection, url,
-            interval=15, variance=5, reportlast=5, ignoreolderthan=3600):
-        BotPersonality.__init__(self, connection, "DonBot")
-        self.url                = url
-        self.interval           = interval
-        self.variance           = variance
-        self.reportlast         = reportlast
-        self.ignoreolderthan    = ignoreolderthan
-        random.seed()
-
-    def pauseBot(self):
-        BotPersonality.pauseBot(self)
-        self.fetch_thread.cancel()
-
-    def resumeBot(self):
-        BotPersonality.resumeBot(self)
-        self.queueBot()
 
     def queueBot(self):
         """Queue the fetch function to run agan after 'interval' seconds"""
@@ -68,6 +48,23 @@ class DonBot(BotPersonality):
             delay = self.interval + random.randrange(self.variance)
             self.fetch_thread = threading.Timer(delay, self.doWork)
             self.fetch_thread.start()
+
+    def doWork(self):
+        print "Error: doWork not implemented"
+
+
+class DonBot(BotPersonality):
+    """Monitor donations and announce them as they come in"""
+    seen_keys = set()
+    new_data = []
+
+    def __init__(self, connection, interval, variance,
+            url, reportlast=5, ignoreolderthan=3600):
+        BotPersonality.__init__(self, connection, interval, variance)
+        self.url                = url
+        self.reportlast         = reportlast
+        self.ignoreolderthan    = ignoreolderthan
+        random.seed()
 
     def doWork(self):
         """Fetch donations from the server and announce new entries"""
@@ -137,3 +134,15 @@ class DonBot(BotPersonality):
                         + " just donated $" + donation['amount']
                         + " to play " + donation['game'])
         return True
+
+
+class MicroTron(BotPersonality):
+    """Act as a microphone, and make regular announcements"""
+
+    def __init__(self, connection, interval, variance, message):
+        BotPersonality.__init__(self, connection, interval, variance)
+        self.message    = message
+
+    def doWork(self):
+        self.queueBot() # Requeue in case of crash
+        self.sendMessage(self.message)

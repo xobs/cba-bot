@@ -1,14 +1,15 @@
 #!/usr/bin/env python
 
-from cbabots import DonBot
+from cbabots import DonBot, MicroTron
 import time
 import os
 
 class TestFramework():
     bots = []
     def __init__(self):
-        self.channel = "cba"
-        bot = DonBot(self, "http://localhost/~user/file.json", 1, 1, 5, 144380)
+        bot = DonBot(self, 5, 2, "http://localhost/~user/file.json", 5, 144380)
+        self.bots.append(bot)
+        bot = MicroTron(self, 5, 2, "You're listening to KABE")
         self.bots.append(bot)
 
     def pause(self):
@@ -20,9 +21,7 @@ class TestFramework():
             bot.resumeBot()
 
     def sendMessage(self, bot, message):
-        print "Message from " + bot.name \
-                + " to channel " + self.channel + ": " \
-                + message
+        print ">>> Message from " + bot.name + ": " + message
 
 if __name__ == '__main__':
     print "Loading test framework..."

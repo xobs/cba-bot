@@ -135,9 +135,15 @@ if __name__ == '__main__':
 
         if srv['personality'] == "donbot":
             print "Found donbot"
-            bots[key] = cbabots.DonBot(servers[key], srv['url'],
+            bots[key] = cbabots.DonBot(servers[key], 
                                     srv['interval'], srv['variance'],
+                                    srv['url'],
                                     srv['reportlast'], srv['ignoreolderthan'])
+        elif srv['personality'] == "microtron":
+            print "Found microtron"
+            bots[key] = cbabots.MicroTron(servers[key], 
+                                    srv['interval'], srv['variance'],
+                                    srv['message'])
         else:
             print "Unknown or missing bot personality"
 

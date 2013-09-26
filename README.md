@@ -33,6 +33,11 @@ Bot types
 Multiple bot types are available.  Each bot has its own unique set of
 parameters that must be specified in a given IRCSERVER definition.
 
+All bots accept the following variables:
+
+* **personality**: The name of the bot to invoke
+* **interval**: The minimum number of seconds to wait between messages.
+* **variance**: In order to keep things interesting, a random number of
 
 Donbot
 ------
@@ -54,14 +59,21 @@ Variables:
 
 * **personality**: Must be set to "donbot"
 * **url**: The JSON URL to fetch donations from
-* **interval**: The minimum number of seconds to wait between messages.
-* **variance**: In order to keep things interesting, a random number of
 seconds to add to the interval period
 * **reportlast**: When donbot starts up, it will only report this many
 old donations.
 * **ignoreolderthan**: When donbot starts up, it will unconditionally
 ignore messages older than this many seconds.
 
+Microtron
+---------
+
+Microtron is small, and simply acts like a microphone.  It will blithely
+repeat a given message at a regular interval.  It's not very interesting,
+but it's small.
+
+* **personality**: Must be set to "microtron"
+* **message**: The message you want microtron to say
 
 Debugging
 ---------
