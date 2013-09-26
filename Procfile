@@ -1,2 +1,2 @@
 web: python app.py
-worker: python cba-bot.py
+worker: python irc-botmanager.py
