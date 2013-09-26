@@ -50,7 +50,7 @@ All bots accept the following variables:
 * **personality**: The name of the bot to invoke
 * **interval**: The minimum number of seconds to wait between messages.
 * **variance**: In order to keep things interesting, a random number of
-seconds to add to the interval.
+seconds (between 0 and *variance*) to add to the interval on each loop.
 
 
 Donbot
@@ -73,7 +73,6 @@ Variables:
 
 * **personality**: Must be set to "donbot"
 * **url**: The JSON URL to fetch donations from
-seconds to add to the interval period
 * **reportlast**: When donbot starts up, it will only report this many
 old donations.
 * **ignoreolderthan**: When donbot starts up, it will unconditionally
