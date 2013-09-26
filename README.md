@@ -23,8 +23,8 @@ run a command such as:
                                 "nick": "examplebot",
                                 "host": "irc.example.com",
                                 "port": 6667,
-    				"personality": "roboto",
-    				"url": "http://example.com/words.json"}}'
+                                "personality": "roboto",
+                                "url": "http://example.com/words.json"}}'
     EOF
 
 Bot types
