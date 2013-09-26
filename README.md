@@ -15,29 +15,43 @@ called "environment", and then run "testrun.sh".  To create such a file,
 run a command such as:
 
     cat >>environment <<EOF
-    export INITTIME=0
-    export IRCSERVERS='{"TTV": {"username": "",
-                                "password": "",
-                                "realname": "Example Bot",
-                                "channels": ["#example", "#example2"],
-                                "nick": "examplebot",
-                                "host": "irc.example.com",
-                                "port": 6667,
-                                "personality": "roboto",
-                                "url": "http://example.com/words.json"}}'
+    export BOTS='{
+                "microtron": {
+                        "host": "irc.example.com",
+                        "port": 6667,
+                        "username": "",
+                        "password": "",
+                        "realname": "Example Bot",
+                        "channels": ["#example", "#example2"],
+                        "nick": "examplebot",
+                        "personality": "microtron",
+                        "interval": 60,
+                        "variance": 0,
+                        "message": "hello, I say"
+                }
+        }'
     EOF
 
 Bot types
 =========
 
 Multiple bot types are available.  Each bot has its own unique set of
-parameters that must be specified in a given IRCSERVER definition.
+parameters that must be specified in a given BOTS definition.
 
 All bots accept the following variables:
 
+* **host**: Hostname of the IRC server to connect to
+* **port**: Port number of the IRC server
+* **username**: Username (if specified) to use with the IRC server
+* **password**: Password (if specified) to use with the IRC server
+* **realname**: The "real name" of the bot (optional)
+* **channels**: An array of channels for the bot to enter
+* **nick**: Nickname of the bot, as seen by users
 * **personality**: The name of the bot to invoke
 * **interval**: The minimum number of seconds to wait between messages.
 * **variance**: In order to keep things interesting, a random number of
+seconds to add to the interval.
+
 
 Donbot
 ------

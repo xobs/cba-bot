@@ -24,6 +24,13 @@ class TestFramework():
         print ">>> Message from " + bot.name + ": " + message
 
 if __name__ == '__main__':
+    import signal, sys
+    print "Debug mode detected, installing signal handler"
+    def handle_ctrlc(signal, frame):
+        print 'SIGINT hit, quitting...'
+        os._exit(0)
+    signal.signal(signal.SIGINT, handle_ctrlc)
+
     print "Loading test framework..."
     tests = TestFramework()
 

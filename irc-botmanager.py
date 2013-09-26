@@ -2,19 +2,7 @@
 r"""CBA channel bot, designed to assist us in reporting goings-on
 during the IGG marathon.
 
-It should be started with an environment set something like:
-
-    INITTIME=0
-    IRCSERVERS='{"EX": {"username": "",
-                        "password": "",
-                        "realname": "Example Bot",
-                        "channels": ["#example"],
-                        "nick": "ExampleBot",
-                        "host": "irc.example.com",
-                        "port": 6667}}'
-    MSG="I'm just a bot.  I don't know a lot."
-    MSGPERIOD="3600"
-    POLLRATE="10"
+See README.md for configuration information.
 
 To enable debugging, add a variable of "DEBUG" and set it to "True"
 """
@@ -33,13 +21,6 @@ import cbabots
 # Load default values, for when the environment is not present
 config = defaultdict(list, [
     ('DEBUG', False),
-    ('IRCSERVERS', '{"IGG": {"username": "", '
-                          + '"password": "", '
-                          + '"realname": "CBA Bot", '
-                          + '"channels": ["#cba"], '
-                          + '"nick": "QQMore", '
-                          + '"host": "127.0.0.1", '
-                          + '"port": 6667}}'),
 ])
 for key, value in os.environ.iteritems():
     config[key] = value
@@ -126,9 +107,12 @@ if __name__ == '__main__':
     # Connect to each server defined in IRCSERVERS
     servers = {} 
     bots = {}
-    srvdict = loads(config["IRCSERVERS"])
+    srvdict = loads(config["BOTS"])
 
     for key, srv in srvdict.iteritems():
+        if 'variance' not in srv:
+            srv['variance'] = 0
+
         servers[key] = IRCConnectionManager(key,
                 srv['channels'], srv['nick'], srv['realname'],
                 srv['username'], srv['password'])

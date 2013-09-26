@@ -33,7 +33,7 @@ class BotPersonality():
 
     def resumeBot(self):
         """Resume a bot (e.g. when connecting, or when reconnecting)"""
-        print "Resuming BotPersonality" + self.name
+        print "Resuming BotPersonality " + self.name
         self.running = True
         self.queueBot()
 
