@@ -1,21 +1,5 @@
 r"""Source file for various bots used by CBA, particularly during the
 IGG marathon.
-
-It should be started with an environment set something like:
-
-    INITTIME=0
-    IRCSERVERS='{"EX": {"username": "",
-                        "password": "",
-                        "realname": "Example Bot",
-                        "channels": ["#example"],
-                        "nick": "ExampleBot",
-                        "host": "irc.example.com",
-                        "port": 6667}}'
-    MSG="I'm just a bot.  I don't know a lot."
-    MSGPERIOD="3600"
-    POLLRATE="10"
-
-To enable debugging, add a variable of "DEBUG" and set it to "True"
 """
 
 from json import loads, dumps
@@ -29,12 +13,14 @@ class BotPersonality():
     """Common interface for various bot personalities"""
     running = False
 
-    def __init__(self, connection, channel, name):
+    def __init__(self, connection, name):
         self.name = name
         self.connection = connection
-        self.channel = channel
         self.running = False
         print "BotPersonality activate!  Form of: " + name
+
+    def setConnection(self, connection):
+        self.connection = connection
 
     def pauseBot(self):
         """Stop a bot from making updates (e.g. if a connection fails)"""
@@ -48,7 +34,7 @@ class BotPersonality():
 
     def sendMessage(self, message):
         """Send a message to the configured channel"""
-        self.connection.sendMessage(self, self.channel, message)
+        self.connection.sendMessage(self, message)
 
 
 class DonBot(BotPersonality):
@@ -56,11 +42,13 @@ class DonBot(BotPersonality):
     seen_keys = set()
     new_data = []
 
-    def __init__(self, connection, channel, url, interval=15, variance=5):
-        BotPersonality.__init__(self, connection, channel, "DonBot")
+    def __init__(self, connection, url,
+            interval=15, variance=5, reportlast=5):
+        BotPersonality.__init__(self, connection, "DonBot")
         self.url      = url
         self.interval = interval
         self.variance = variance
+        self.reportlast = reportlast
         random.seed()
 
     def pauseBot(self):
@@ -100,14 +88,23 @@ class DonBot(BotPersonality):
         # Re-sort the data by timestamp
         self.new_data = sorted(self.new_data,
                                 key=lambda donation: donation['timestamp'])
-        self.sendNextMessage()
 
+        # Special startup code.  If seen_keys is empty and we have new data,
+        # stuff all but the last /reportlast/ variables into the "seen_keys"
+        # set, to prevent spamming the channel.
+        if len(self.seen_keys) == 0:
+            while len(self.new_data) > self.reportlast:
+                obj = self.new_data.pop(0)
+                self.seen_keys.add(obj['pk'])
+            
+        self.sendNextMessage()
 
     def sendNextMessage(self):
         """Send the next message to the chat channel, if one exists.
             Return True if a message was sent, False if no message was sent."""
         if len(self.new_data) == 0:
             return False
+
         donation = self.new_data.pop(0)
         self.seen_keys.add(donation['pk'])
 

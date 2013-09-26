@@ -27,12 +27,12 @@ from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.internet import threads
 from urllib2 import urlopen
+import cbabots
 
 
 # Load default values, for when the environment is not present
 config = defaultdict(list, [
     ('DEBUG', False),
-    ('INITTIME', '0'),
     ('IRCSERVERS', '{"IGG": {"username": "", '
                           + '"password": "", '
                           + '"realname": "CBA Bot", '
@@ -40,45 +40,18 @@ config = defaultdict(list, [
                           + '"nick": "QQMore", '
                           + '"host": "127.0.0.1", '
                           + '"port": 6667}}'),
-    ('MSG', "I'm just a bot.  I don't know a lot."),
-    ('MSGPERIOD', "15"),
-    ('POLLRATE', "10"),
 ])
 for key, value in os.environ.iteritems():
     config[key] = value
 
 
-class BotPersonality():
-    """Common interface for various bot personalities"""
-
-    def __init__(self, connection, channel, name):
-        self.name = name
-        self.connection = connection
-        print "BotPersonality activate!"
-
-    def pauseBot(self):
-        """Stop a bot from making updates (e.g. if a connection fails)"""
-        print "Pausing BotPersonality"
-        pass
-
-    def resumeBot(self):
-        """Resume a bot (e.g. when connecting, or when reconnecting)"""
-        print "Resuming BotPersonality"
-        pass
-
-    def sendMessage(message):
-        """Send a message to the configured channel"""
-        print "Sending a message to " + channel + ": " + message
-        #connection.irc.IRCClient.msg(connection, channel, message)
-
-
-class DonBot(BotPersonality):
-    """Monitor donations and announce them as they come in"""
 
 class IRCConnection(irc.IRCClient):
     """Handle one connection to a server, in one or more channels"""
+    active_channels = set()
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
+        self.config.bot.setConnection(self)
 
     def connectionLost(self, reason):
         irc.IRCClient.connectionList(self, reason)
@@ -86,10 +59,17 @@ class IRCConnection(irc.IRCClient):
     def signedOn(self):
         for channel in self.config.channels:
             self.join(channel.encode('ascii', 'ignore'))
+        self.config.bot.resumeBot()
 
     def joined(self, channel):
-        irc.IRCClient.msg(self, channel, "Hello, there " + channel)
-        irc.IRCClient.msg(self, channel, config['MSG'])
+        self.active_channels.add(channel)
+
+    def left(self, channel):
+        self.active_channels.remove(channel)
+
+    def sendMessage(self, bot, message):
+        for channel in self.active_channels:
+            irc.IRCClient.msg(self, channel, message.encode('ascii', 'ignore'))
 
     def privmsg(self, user, channel, msg):
         print "Priv msg from " + user + " on channel " + channel + ": " + msg
@@ -109,6 +89,9 @@ class IRCConnectionManager(protocol.ClientFactory):
         for channel in channels:
             self.channels.append(channel.encode('ascii', 'ignore'))
 
+    def setBot(self, bot):
+        self.bot = bot
+
     def buildProtocol(self, addr):
         p = IRCConnection()
         p.config = self
@@ -121,7 +104,6 @@ class IRCConnectionManager(protocol.ClientFactory):
 
     def clientConnectionFailed(self, connector, reason):
         reactor.stop()
-
 
 
 if __name__ == '__main__':
@@ -143,12 +125,23 @@ if __name__ == '__main__':
 
     # Connect to each server defined in IRCSERVERS
     servers = {} 
+    bots = {}
     srvdict = loads(config["IRCSERVERS"])
 
     for key, srv in srvdict.iteritems():
         servers[key] = IRCConnectionManager(key,
                 srv['channels'], srv['nick'], srv['realname'],
                 srv['username'], srv['password'])
+
+        if srv['personality'] == "donbot":
+            print "Found donbot"
+            bots[key] = cbabots.DonBot(servers[key], srv['url'],
+                                    srv['interval'], srv['variance'],
+                                    srv['reportlast'])
+        else:
+            print "Unknown or missing bot personality"
+
+        servers[key].setBot(bots[key])
         reactor.connectTCP(srv['host'], srv['port'], servers[key])
 
     # Run all bots

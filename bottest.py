@@ -7,8 +7,8 @@ import os
 class TestFramework():
     bots = []
     def __init__(self):
-        bot = DonBot(self, "cloudboatarmada",
-                    "http://localhost/~user/file.json", 1, 1)
+        self.channel = "cba"
+        bot = DonBot(self, "http://localhost/~user/file.json", 1, 1)
         self.bots.append(bot)
 
     def pause(self):
@@ -19,9 +19,9 @@ class TestFramework():
         for bot in self.bots:
             bot.resumeBot()
 
-    def sendMessage(self, bot, channel, message):
+    def sendMessage(self, bot, message):
         print "Message from " + bot.name \
-                + " to channel " + channel + ": " \
+                + " to channel " + self.channel + ": " \
                 + message
 
 if __name__ == '__main__':
