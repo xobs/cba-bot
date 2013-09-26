@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 r"""CBA channel bot, designed to assist us in reporting goings-on
 during the IGG marathon.
 
@@ -45,6 +46,34 @@ config = defaultdict(list, [
 ])
 for key, value in os.environ.iteritems():
     config[key] = value
+
+
+class BotPersonality():
+    """Common interface for various bot personalities"""
+
+    def __init__(self, connection, channel, name):
+        self.name = name
+        self.connection = connection
+        print "BotPersonality activate!"
+
+    def pauseBot(self):
+        """Stop a bot from making updates (e.g. if a connection fails)"""
+        print "Pausing BotPersonality"
+        pass
+
+    def resumeBot(self):
+        """Resume a bot (e.g. when connecting, or when reconnecting)"""
+        print "Resuming BotPersonality"
+        pass
+
+    def sendMessage(message):
+        """Send a message to the configured channel"""
+        print "Sending a message to " + channel + ": " + message
+        #connection.irc.IRCClient.msg(connection, channel, message)
+
+
+class DonBot(BotPersonality):
+    """Monitor donations and announce them as they come in"""
 
 class IRCConnection(irc.IRCClient):
     """Handle one connection to a server, in one or more channels"""

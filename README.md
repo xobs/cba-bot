@@ -22,8 +22,9 @@ run a command such as:
                                 "channels": ["#example"],
                                 "nick": "examplebot",
                                 "host": "irc.example.com",
-                                "port": 6667}}'
-    export MSG="I'm just a bot.  I don't know a lot."
+                                "port": 6667,
+    				"personality": "roboto",
+    				"url": "http://example.com/words.json"}}'
     export MSGPERIOD="15"
     export POLLRATE="10"
     EOF
