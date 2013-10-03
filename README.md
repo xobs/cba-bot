@@ -88,8 +88,34 @@ but it's small.
 * **personality**: Must be set to "microtron"
 * **message**: The message you want microtron to say
 
+Gavelmaster
+-----------
+
+Gavelmaster has no special requirements.  It is currently localized to US
+numeral systems, and expects the '.' character to be used to denote cents.
+Additionally, it does not support sub-unit currencies (e.g. cents), and does
+not support any currency symbol other than '$'.
+
+Channel ops are able to control gavelmaster.  Control of the bot is done by
+sending it direct messages.  If a user is op in any of the chatrooms, then
+they will be able to control the bot.
+
+To get a list of available commands, send the bot "help".  E.g. "/msg
+gavelmaster help".
+
+Note that arguments may be quoted.  That is, to supply a multi-word
+description to a new auction, send:
+
+    /msg gavelmaster new $10 "this is a multiword auction"
+
+* **personality**: Must be set to "gavelmaster"
+
 Debugging
 ---------
+
+It is probably desirable to debug bots on your own IRC server.  Crashes and
+the like will mean frequent reconnects, and this can trigger a server's
+limits.  It can be handy to restart the server if necessary.
 
 To debug the bot, add an environment variable "DEBUG" and set it to "True".
 
