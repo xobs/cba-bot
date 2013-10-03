@@ -32,6 +32,7 @@ class IRCConnection(irc.IRCClient):
     """Handle one connection to a server, in one or more channels"""
     active_channels = set()
     CHANNEL_PREFIXES = '&#!+'
+    OPS_PREFIXES = '%@&~' # Halfop, Op, Admin, and Owner
     _namescallback = {}
 
     def connectionMade(self):
@@ -48,7 +49,17 @@ class IRCConnection(irc.IRCClient):
 
     def joinedResult(things, args):
         (self, channel, users) = args
-        self.config.bot.joinedChannel(channel, users)
+        op_set = set()
+        user_set = set()
+
+        # Strip symbols and determine ops
+        for user in users:
+            if len(user) > 0 and user[0] in self.OPS_PREFIXES:
+                op_set.add(user.lstrip(self.OPS_PREFIXES))
+            user_set.add(user.lstrip(self.OPS_PREFIXES))
+
+        self.config.bot.joinedChannel(channel, user_set)
+        self.config.bot.setOpList(channel, op_set)
 
     def joined(self, channel):
         self.active_channels.add(channel)
@@ -67,6 +78,18 @@ class IRCConnection(irc.IRCClient):
     def userJoined(self, user, channel):
         pass
 
+    def modeChanged(self, user, channel, is_set, modes, args):
+        if modes.find("o") == -1:
+            return
+        if is_set:
+            for u in args:
+                self.config.bot.addOp(channel, u)
+                print "Added op for " + arg
+        else:
+            for u in args:
+                self.config.bot.removeOp(channel, u)
+                print "Removed op for " + arg
+
     def privmsg(self, user, channel, msg):
         othernick = user.split("!")[0]
         found_channel = False
@@ -84,7 +107,7 @@ class IRCConnection(irc.IRCClient):
 
         # If it's not from an active channel, and it's from a real channel,
         # that's considered a bug.
-        if not found_channel and not channel[0] not in CHANNEL_PREFIXES:
+        if not found_channel and not channel[0] not in self.CHANNEL_PREFIXES:
             if config['DEBUG']:
                 print "ERROR: Channel " + channel + " not active!"
             return
