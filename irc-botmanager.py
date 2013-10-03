@@ -14,6 +14,7 @@ import os
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.internet import threads
+from twisted.internet import defer
 from urllib2 import urlopen
 import cbabots
 
@@ -30,30 +31,103 @@ for key, value in os.environ.iteritems():
 class IRCConnection(irc.IRCClient):
     """Handle one connection to a server, in one or more channels"""
     active_channels = set()
+    CHANNEL_PREFIXES = '&#!+'
+    _namescallback = {}
+
     def connectionMade(self):
         irc.IRCClient.connectionMade(self)
         self.config.bot.setConnection(self)
 
     def connectionLost(self, reason):
-        irc.IRCClient.connectionList(self, reason)
+        irc.IRCClient.connectionLost(self, reason)
 
     def signedOn(self):
         for channel in self.config.channels:
             self.join(channel.encode('ascii', 'ignore'))
         self.config.bot.resumeBot()
 
+    def joinedResult(things, args):
+        (self, channel, users) = args
+        self.config.bot.joinedChannel(channel, users)
+
     def joined(self, channel):
         self.active_channels.add(channel)
+        self.names(channel).addCallback(self.joinedResult)
 
     def left(self, channel):
         self.active_channels.remove(channel)
 
     def sendMessage(self, bot, message):
         for channel in self.active_channels:
-            irc.IRCClient.msg(self, channel, message.encode('ascii', 'ignore'))
+            irc.IRCClient.msg(self, channel, message)
+
+    def sendDirectMessage(self, bot, user, message):
+        irc.IRCClient.msg(self, user, message)
+
+    def userJoined(self, user, channel):
+        pass
 
     def privmsg(self, user, channel, msg):
-        print "Priv msg from " + user + " on channel " + channel + ": " + msg
+        othernick = user.split("!")[0]
+        found_channel = False
+
+        # Make sure the received message is from an active channel
+        for active_channel in self.active_channels:
+            if channel == active_channel:
+                found_channel = True
+                self.config.bot.receiveMessage(othernick, msg)
+                return
+
+        if channel == self.config.nickname:
+            self.config.bot.receivePrivateMessage(othernick, msg)
+            return
+
+        # If it's not from an active channel, and it's from a real channel,
+        # that's considered a bug.
+        if not found_channel and not channel[0] not in CHANNEL_PREFIXES:
+            if config['DEBUG']:
+                print "ERROR: Channel " + channel + " not active!"
+            return
+
+        if config['DEBUG']:
+            print "ERROR: Privmsg from " + channel + " to " + msg + \
+                " message " + msg + " not handled!"
+        return
+
+    def names(self, channel):
+        """Get a list of users in a channel"""
+        channel = channel.lower()
+        d = defer.Deferred()
+        if channel not in self._namescallback:
+            self._namescallback[channel] = ([], [])
+
+        self._namescallback[channel][0].append(d)
+        self.sendLine("NAMES %s" % channel)
+        return d
+
+    def irc_RPL_NAMREPLY(self, prefix, params):
+        channel = params[2].lower()
+        nicklist = params[3].split(' ')
+
+        if channel not in self._namescallback:
+            return
+
+        n = self._namescallback[channel][1]
+        n += nicklist
+
+    def irc_RPL_ENDOFNAMES(self, prefix, params):
+        channel = params[1].lower()
+        if channel not in self._namescallback:
+            return
+
+        callbacks, namelist = self._namescallback[channel]
+
+        for cb in callbacks:
+            cb.callback((self, channel, namelist))
+
+        del self._namescallback[channel]
+
+
 
 class IRCConnectionManager(protocol.ClientFactory):
     """Each time there's a new IRC connection, this class will create a
@@ -124,18 +198,20 @@ if __name__ == '__main__':
                 srv['username'], srv['password'])
 
         if srv['personality'] == "donbot":
-            print "Found donbot"
             bots[key] = cbabots.DonBot(servers[key], 
                                     srv['interval'], srv['variance'],
                                     srv['url'],
                                     srv['reportlast'], srv['ignoreolderthan'])
         elif srv['personality'] == "microtron":
-            print "Found microtron"
             bots[key] = cbabots.MicroTron(servers[key], 
                                     srv['interval'], srv['variance'],
                                     srv['message'])
+        elif srv['personality'] == "gavelmaster":
+            bots[key] = cbabots.GavelMaster(servers[key], 
+                                    srv['interval'], srv['variance'])
         else:
-            print "Unknown or missing bot personality"
+            raise Exception("Unknown or missing bot personality: "
+                    + srv['personality'])
 
         servers[key].setBot(bots[key])
         reactor.connectTCP(srv['host'], srv['port'], servers[key])

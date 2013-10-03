@@ -37,17 +37,37 @@ class BotPersonality():
         self.running = True
         self.queueBot()
 
+    def joinedChannel(self, channel, users):
+        """Called when we join a channel"""
+        pass
+
     def sendMessage(self, message):
         """Send a message to the configured channel"""
         self.connection.sendMessage(self, message)
+
+    def sendPrivateMessage(self, user, message):
+        """Send a direct message to a user (or a specific channel)"""
+        self.connection.sendDirectMessage(self, user, message)
+
+    def receiveMessage(self, user, message):
+        """Called when a user or channel emits a message"""
+        pass
+
+    def receivePrivateMessage(self, user, message):
+        """Called when another user sends a direct message"""
+        pass
 
     def queueBot(self):
         """Queue the fetch function to run agan after 'interval' seconds"""
         # Retrigger this function, if we're still running
         if (self.running):
             delay = self.interval + random.randrange(self.variance)
-            self.fetch_thread = threading.Timer(delay, self.doWork)
+            self.fetch_thread = threading.Timer(delay, self.doWorkRequeue)
             self.fetch_thread.start()
+
+    def doWorkRequeue(self):
+        self.queueBot() # Requeue in case of crash
+        self.doWork()
 
     def doWork(self):
         print "Error: doWork not implemented"
@@ -68,7 +88,6 @@ class DonBot(BotPersonality):
 
     def doWork(self):
         """Fetch donations from the server and announce new entries"""
-        self.queueBot() # Requeue in case of crash
 
         if self.sendNextMessage():
             return
@@ -144,5 +163,25 @@ class MicroTron(BotPersonality):
         self.message    = message
 
     def doWork(self):
-        self.queueBot() # Requeue in case of crash
         self.sendMessage(self.message)
+
+
+class GavelMaster(BotPersonality):
+    """Act as auction-master"""
+    def __init__(self, connection, interval, variance):
+        BotPersonality.__init__(self, connection, interval, variance)
+
+    def doWork(self):
+        pass
+
+    def joinedChannel(self, channel, users):
+        print "Joined channel.  Users:"
+        for user in users:
+            print "    " + user
+
+    def receiveMessage(self, user, message):
+        self.sendMessage("I agree: " + message)
+
+    def receivePrivateMessage(self, user, message):
+        self.sendMessage("Hey everyone, " + user + " said: " + message)
+        self.sendPrivateMessage(user, "Hope you don't mind~!")
