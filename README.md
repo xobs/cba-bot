@@ -15,6 +15,9 @@ of a configuration file in JSON format.  It will poll this file once every
 60 seconds, and if any single bot's configuration changes, that bot will be
 restarted.
 
+You can also specify an environment variable "BOTS_REFRESH" to affect
+how frequently the bots JSON file is fetched from the server.
+
 In this way, new bots can be added while the system is running live.
 
     cat >>test.json <<EOF
