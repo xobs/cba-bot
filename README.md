@@ -113,6 +113,20 @@ description to a new auction, send:
 
 * **personality**: Must be set to "gavelmaster"
 
+Pollboy
+-----------
+
+Pollboy has no special requirements.  It will monitor a channel for messages
+from ops, and conduct polls.  For help on pollboy, send a private message with
+the string "help".
+
+Note that arguments may be quoted.  That is, to supply a multi-word
+description to a poll option, send:
+
+    /msg pollboy new "What are you doing?" "Watching IGG" "Playing games"
+
+* **personality**: Must be set to "pollboy"
+
 Debugging
 ---------
 

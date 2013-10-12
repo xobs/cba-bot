@@ -203,7 +203,7 @@ class IRCConnectionManager(protocol.ClientFactory):
             print "Not reconnecting"
 
     def clientConnectionFailed(self, connector, reason):
-        print "Connection lost!"
+        print "Connection failed!"
         if self.should_reconnect:
             print "Reconnecting"
             connector.connect()
@@ -223,6 +223,9 @@ def createBot(connectionManager, srv):
                                 srv['message'])
     elif srv['personality'] == "gavelmaster":
         return cbabots.GavelMaster(connectionManager,
+                                srv['interval'], srv['variance'])
+    elif srv['personality'] == "pollboy":
+        return cbabots.PollBoy(connectionManager,
                                 srv['interval'], srv['variance'])
     else:
         raise Exception("Unknown or missing bot personality: "

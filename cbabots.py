@@ -378,3 +378,137 @@ class GavelMaster(BotPersonality):
 
     def sayAddBid(self):
         self.sendMessage("Add your bid by saying 'bid [amount]'")
+
+
+class PollBoy(BotPersonality):
+    """Perform an informal poll in the channel"""
+    isRunning = False
+
+    def __init__(self, connection, interval, variance):
+        BotPersonality.__init__(self, connection, interval, variance)
+        self.description    = ""
+        self.isRunning      = False
+        self.current_winner = ""
+        self.options        = []
+        self.votes          = {}
+
+    def doWork(self):
+        pass
+
+    def pollActive(self):
+        if self.isRunning == True:
+            return True
+        return False
+
+    def setPollActive(self, isRunning):
+        self.isRunning = isRunning
+
+    def receiveMessage(self, user, message):
+        choice = 0
+        if not self.pollActive():
+            return
+
+        if not message.lower().startswith("pick "):
+            return
+
+        splitted = message.split(" ")
+        if (len(splitted) <= 1):
+            self.sendPrivateMessage(user, "To vote, say 'pick [number]'."
+                    + " For example, 'pick 2'.")
+            return
+
+        try:
+            choice = int(splitted[1])-1
+        except:
+            self.sendPrivateMessage(user, "I'm sorry, I couldn't understand "
+                    + "your vote.")
+            return
+
+        if choice < 0 or choice > len(self.options)-1:
+            self.sendPrivateMessage(user, "Please vote on a number between "
+                    "1 and " + str(len(self.options)))
+            return
+
+        self.votes[user] = choice
+
+    def receivePrivateMessage(self, user, message):
+        # If user is op ANYWHERE, allow it
+        if not self.isOp(user):
+            self.sendPrivateMessage(user, "Only ops can control this bot")
+            return
+
+        argv = self.parseArgs(message)
+        if not argv or len(argv) < 1:
+            self.sendHelp(user)
+
+        elif argv[0] == "help":
+            self.sendHelp(user)
+
+        elif argv[0] == "new":
+            self.addNew(user, argv)
+
+        elif argv[0] == "finish":
+            self.endPoll()
+
+        elif argv[0] == "reject":
+            self.rejectPoll(user, argv)
+
+        else:
+            self.sendPrivateMessage(user,
+                    "Unrecognized command '" + argv[0] + '"')
+            self.sendHelp(user)
+
+    def sendHelp(self, user):
+        self.sendPrivateMessage(user,
+                "Commands:"
+              + "\nnew [poll name] [option 1] [option 2] [...]"
+              + "\nreject [nick]"
+              + "\nfinish")
+
+    def startPoll(self):
+        self.sendMessage("We want to know: " + self.description)
+        for i in range(0, len(self.options)):
+            self.sendMessage(str(int(i+1)) + ": " + self.options[i])
+        self.sendMessage("Say 'pick [number] to vote")
+        self.setPollActive(True)
+
+    def endPoll(self):
+        totals = []
+        winning = 0
+        for i in range(0, len(self.options)):
+            totals.append(0)
+
+        for option in self.votes.values():
+            totals[int(option)] = totals[int(option)] + 1
+
+        self.sendMessage("Results:")
+        for i in range(0, len(self.options)):
+            self.sendMessage(str(totals[i]) + " - " + self.options[i])
+            if totals[i] > totals[winning]:
+                winning = i
+
+        self.sendMessage("And the winner is: " + self.options[winning])
+        self.setPollActive(False)
+
+    def addNew(self, user, argv):
+        if len(argv) < 4:
+            self.sendPrivateMessage(user,
+                        "Usage: new [description] [option 1] [option 2] [...]")
+            return
+
+        del self.options[:]
+        for i in range(2, len(argv)):
+            self.options.append(argv[i])
+
+        self.votes.clear()
+        self.startPoll()
+
+    def rejectPoll(self, user, argv):
+        if len(argv) != 2:
+            self.sendMessage("Usage: reject [username]")
+            return
+
+        if argv[1] in self.votes:
+            del self.votes[argv[1]]
+        else:
+            self.sendMessage("User " + argv[1] + " hasn't voted")
