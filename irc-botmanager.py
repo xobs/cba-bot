@@ -17,6 +17,7 @@ from twisted.internet import threads
 from twisted.internet import defer
 from urllib2 import urlopen
 import cbabots
+from threading import Thread, Event
 
 
 # Load default values, for when the environment is not present
@@ -84,11 +85,9 @@ class IRCConnection(irc.IRCClient):
         if is_set:
             for u in args:
                 self.config.bot.addOp(channel, u)
-                print "Added op for " + arg
         else:
             for u in args:
                 self.config.bot.removeOp(channel, u)
-                print "Removed op for " + arg
 
     def privmsg(self, user, channel, msg):
         othernick = user.split("!")[0]
@@ -155,6 +154,9 @@ class IRCConnection(irc.IRCClient):
 class IRCConnectionManager(protocol.ClientFactory):
     """Each time there's a new IRC connection, this class will create a
     new IRCConnection to manage it."""
+    connection = None
+    config = None
+    should_reconnect = True
 
     def __init__(self, name, channels, nickname, realname,
             username, password):
@@ -170,6 +172,21 @@ class IRCConnectionManager(protocol.ClientFactory):
     def setBot(self, bot):
         self.bot = bot
 
+    def setConnection(self, connection):
+        self.connection = connection
+
+    def setConfig(self, config):
+        self.config = config
+
+    def getConnection(self):
+        return self.connection
+
+    def getConfig(self):
+        return self.config
+
+    def stopReconnecting(self):
+        self.should_reconnect = False
+
     def buildProtocol(self, addr):
         p = IRCConnection()
         p.config = self
@@ -178,11 +195,106 @@ class IRCConnectionManager(protocol.ClientFactory):
         return p
 
     def clientConnectionLost(self, connector, reason):
-        connector.connect()
+        print "Connection lost!"
+        if self.should_reconnect:
+            print "Reconnecting"
+            connector.connect()
+        else:
+            print "Not reconnecting"
 
     def clientConnectionFailed(self, connector, reason):
-        reactor.stop()
+        print "Connection lost!"
+        if self.should_reconnect:
+            print "Reconnecting"
+            connector.connect()
+        else:
+            print "Not reconnecting"
 
+
+def createBot(connectionManager, srv):
+    if srv['personality'] == "donbot":
+        return cbabots.DonBot(connectionManager,
+                                srv['interval'], srv['variance'],
+                                srv['url'],
+                                srv['reportlast'], srv['ignoreolderthan'])
+    elif srv['personality'] == "microtron":
+        return cbabots.MicroTron(connectionManager,
+                                srv['interval'], srv['variance'],
+                                srv['message'])
+    elif srv['personality'] == "gavelmaster":
+        return cbabots.GavelMaster(connectionManager,
+                                srv['interval'], srv['variance'])
+    else:
+        raise Exception("Unknown or missing bot personality: "
+                + srv['personality'])
+
+def reloadConfig(url, servers):
+    srvdict = {}
+    seen_bots = set()
+    try:
+        srvdict = loads(urlopen(url).read())
+    except:
+        print "ERROR: Couldn't load JSON from " + url
+        return
+
+    for key, srv in srvdict.iteritems():
+        seen_bots.add(key)
+
+        # Set up defaults for parameters that are undefined in the bot
+        if 'variance' not in srv:
+            srv['variance'] = 0
+        if 'username' not in srv:
+            srv['username'] = ''
+        if 'password' not in srv:
+            srv['password'] = ''
+        if 'port' not in srv:
+            srv['port'] = 6667
+
+        if key in servers and dumps(servers[key].getConfig()) == dumps(srv):
+            continue
+        print "Adding bot (cfg: " + key + ")"
+
+        # Disconnect the bot, if it exists already
+        if key in servers:
+            print "Reloading config for bot " + key
+            servers[key].stopReconnecting()
+            servers[key].stopFactory()
+            servers[key].getConnection().disconnect()
+
+        servers[key] = IRCConnectionManager(key,
+                srv['channels'], srv['nick'], srv['realname'],
+                srv['username'], srv['password'])
+
+        servers[key].setBot(createBot(servers[key], srv))
+        servers[key].setConnection(reactor.connectTCP(
+                                srv['host'],
+                                srv['port'],
+                                servers[key]))
+        servers[key].setConfig(srv)
+
+    # If a bot has disappeared from the config, disconnect it.
+    for key in servers.keys():
+        if not key in seen_bots:
+            print "Bot " + key + " disappeared, removing"
+            servers[key].stopReconnecting()
+            servers[key].stopFactory()
+            servers[key].getConnection().disconnect()
+            servers.pop(key)
+    return servers
+
+
+class ConfigReloader(Thread):
+    def __init__(self, event, configUrl, period, servers):
+        Thread.__init__(self)
+        self.stopped = event
+        self.configUrl = configUrl
+        self.period = period
+        self.servers = servers
+
+    def run(self):
+        while not self.stopped.wait(self.period):
+            print "Reloading"
+            reloadConfig(self.configUrl, self.servers)
 
 if __name__ == '__main__':
     try:
@@ -203,41 +315,10 @@ if __name__ == '__main__':
 
     # Connect to each server defined in IRCSERVERS
     servers = {} 
-    bots = {}
-    srvdict = loads(config["BOTS"])
-
-    for key, srv in srvdict.iteritems():
-        if 'variance' not in srv:
-            srv['variance'] = 0
-        if 'username' not in srv:
-            srv['username'] = ''
-        if 'password' not in srv:
-            srv['password'] = ''
-        if 'port' not in srv:
-            srv['port'] = 6667
-
-        servers[key] = IRCConnectionManager(key,
-                srv['channels'], srv['nick'], srv['realname'],
-                srv['username'], srv['password'])
-
-        if srv['personality'] == "donbot":
-            bots[key] = cbabots.DonBot(servers[key], 
-                                    srv['interval'], srv['variance'],
-                                    srv['url'],
-                                    srv['reportlast'], srv['ignoreolderthan'])
-        elif srv['personality'] == "microtron":
-            bots[key] = cbabots.MicroTron(servers[key], 
-                                    srv['interval'], srv['variance'],
-                                    srv['message'])
-        elif srv['personality'] == "gavelmaster":
-            bots[key] = cbabots.GavelMaster(servers[key], 
-                                    srv['interval'], srv['variance'])
-        else:
-            raise Exception("Unknown or missing bot personality: "
-                    + srv['personality'])
-
-        servers[key].setBot(bots[key])
-        reactor.connectTCP(srv['host'], srv['port'], servers[key])
+    reloadConfig(config["BOTS"], servers)
+    reloaderEvent = Event()
+    configReloader = ConfigReloader(reloaderEvent, config["BOTS"], 60, servers)
+    configReloader.start()
 
     # Run all bots
     reactor.run()

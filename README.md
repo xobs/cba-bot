@@ -10,12 +10,15 @@ Configuration
 Configuration is normally done through Heroku environment variables, but
 for local testing you can simply modify your local environment.
 
-To avoid polluting your setup, place all environment variables into a file
-called "environment", and then run "testrun.sh".  To create such a file,
-run a command such as:
+The bot uses a single environment variable "BOTS", which contains the URL
+of a configuration file in JSON format.  It will poll this file once every
+60 seconds, and if any single bot's configuration changes, that bot will be
+restarted.
 
-    cat >>environment <<EOF
-    export BOTS='{
+In this way, new bots can be added while the system is running live.
+
+    cat >>test.json <<EOF
+    {
                 "microtron": {
                         "host": "irc.example.com",
                         "port": 6667,
@@ -29,7 +32,7 @@ run a command such as:
                         "variance": 0,
                         "message": "hello, I say"
                 }
-        }'
+    }
     EOF
 
 Bot types
