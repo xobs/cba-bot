@@ -202,21 +202,31 @@ class MicroTron(BotPersonality):
 
 class GavelMaster(BotPersonality):
     """Act as auction-master"""
+    isRunning = False
+
     def __init__(self, connection, interval, variance):
         BotPersonality.__init__(self, connection, interval, variance)
         self.hibid          = 0
         self.increment      = 0
         self.description    = ""
-        self.running        = False
+        self.isRunning      = False
         self.current_winner = ""
         self.bid_history    = []
 
     def doWork(self):
         pass
 
+    def auctionActive(self):
+        if self.isRunning == True:
+            return True
+        return False
+
+    def setAuctionActive(self, isRunning):
+        self.isRunning = isRunning
+
     def receiveMessage(self, user, message):
         bid = 0
-        if not self.running:
+        if not self.auctionActive():
             return
 
         if not message.lower().startswith("bid "):
@@ -235,7 +245,9 @@ class GavelMaster(BotPersonality):
                     + "your bid amount.")
             return
 
-        if bid < self.hibid + self.increment:
+        if bid == self.hibid and len(self.bid_history) == 0:
+            pass
+        elif bid < self.hibid + self.increment:
             self.sendPrivateMessage(user, "You must bid at least $"
                     + str(self.hibid + self.increment))
             return
@@ -265,7 +277,7 @@ class GavelMaster(BotPersonality):
         elif argv[0] == "abort":
             self.sendMessage("Sorry folks, we're going to stop this auction "
                     + "without a winner")
-            self.running = False
+            self.setAuctionActive(False)
 
         elif argv[0] == "finish":
             self.endAuction()
@@ -294,7 +306,7 @@ class GavelMaster(BotPersonality):
         self.sendMessage("We're auctioning off " + self.description)
         self.sendMessage("We'll start the auction off at $" + str(self.startbid))
         self.sayAddBid()
-        self.running = True
+        self.setAuctionActive(True)
 
     def endAuction(self):
         if (self.current_winner == ""):
@@ -302,7 +314,7 @@ class GavelMaster(BotPersonality):
         else:
             self.sendMessage("The auction is over!  Congratulations "
                     "to the winner, " + self.current_winner + ".")
-        self.running = False
+        self.setAuctionActive(False)
 
     def addNew(self, user, argv):
         if len(argv) != 3:
