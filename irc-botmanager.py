@@ -161,6 +161,7 @@ class IRCConnectionManager(protocol.ClientFactory):
     connection = None
     config = None
     should_reconnect = True
+    clock = None
 
     def __init__(self, name, channels, nickname, realname,
             username, password):
@@ -199,22 +200,25 @@ class IRCConnectionManager(protocol.ClientFactory):
         return p
 
     def clientConnectionLost(self, connector, reason):
-        print "Connection lost!"
-        if self.should_reconnect:
-            print "Reconnecting"
-            connector.connect()
-        else:
-            self.bot.pauseBot()
-            print "Not reconnecting"
+        print "Connection lost"
+        self.retry(connector)
 
     def clientConnectionFailed(self, connector, reason):
-        print "Connection failed!"
-        if self.should_reconnect:
-            print "Reconnecting"
-            connector.connect()
-        else:
-            self.bot.pauseBot()
-            print "Not reconnecting"
+        print "Connection failed"
+        self.retry(connector)
+
+    def retry(self, connector, delay=60):
+        def reconnector():
+            self._callID = None
+            if self.should_reconnect:
+                print "Reconnecting"
+                connector.connect()
+            else:
+                print "Not reconnecting"
+        if self.clock is None:
+            from twisted.internet import reactor
+            self.clock = reactor
+        self._callID = self.clock.callLater(delay, reconnector)
 
 
 def createBot(connectionManager, srv):
