@@ -11,6 +11,8 @@ from collections import defaultdict
 from json import loads, dumps
 import locale
 import os
+import random
+import time
 from twisted.words.protocols import irc
 from twisted.internet import reactor, protocol
 from twisted.internet import threads
@@ -41,6 +43,7 @@ class IRCConnection(irc.IRCClient):
     _namescallback = {}
 
     def connectionMade(self):
+        time.sleep(2)
         irc.IRCClient.connectionMade(self)
         self.config.bot.setConnection(self)
 
@@ -50,9 +53,10 @@ class IRCConnection(irc.IRCClient):
     def signedOn(self):
         for channel in self.config.channels:
             self.join(channel.encode('ascii', 'ignore'))
-        if self.config.authuser != "" and self.config.authmessage != "":
-            irc.IRCClient.msg(self,
-                    self.config.authuser, self.config.authmessage)
+        if self.config.onconnect != "":
+            time.sleep(2)
+            print "Sending auth command: " + self.config.onconnect
+            self.sendLine(self.config.onconnect)
         self.config.bot.resumeBot()
 
     def joinedResult(things, args):
@@ -99,6 +103,8 @@ class IRCConnection(irc.IRCClient):
     def privmsg(self, user, channel, msg):
         othernick = user.split("!")[0]
         found_channel = False
+
+        print "Received a private message from " + user + " on channel " + channel + ": " + msg
 
         # Make sure the received message is from an active channel
         for active_channel in self.active_channels:
@@ -168,14 +174,13 @@ class IRCConnectionManager(protocol.ClientFactory):
     bot = None
 
     def __init__(self, name, channels, nickname, realname,
-            username, password, authuser, authmessage):
+            username, password, onconnect):
         # Data must not be unicode, otherwise Twisted will crash
         self.nickname = nickname.encode('ascii', 'ignore')
         self.realname = realname.encode('ascii', 'ignore')
         self.username = username.encode('ascii', 'ignore')
         self.password = password.encode('ascii', 'ignore')
-        self.authuser  = authuser.encode('ascii', 'ignore')
-        self.authmessage  = authmessage.encode('ascii', 'ignore')
+        self.onconnect  = onconnect.encode('ascii', 'ignore')
         self.channels = []
         for channel in channels:
             self.channels.append(channel.encode('ascii', 'ignore'))
@@ -220,6 +225,7 @@ class IRCConnectionManager(protocol.ClientFactory):
         self.retry(connector)
 
     def retry(self, connector, delay=60):
+        jitter = 0
         def reconnector():
             self._callID = None
             if self.should_reconnect:
@@ -227,6 +233,9 @@ class IRCConnectionManager(protocol.ClientFactory):
                 connector.connect()
             else:
                 print "Not reconnecting"
+
+        delay = random.normalvariate(delay, delay * 0.11)
+
         if self.clock is None:
             from twisted.internet import reactor
             self.clock = reactor
@@ -276,10 +285,8 @@ def reloadConfig(url, servers):
                 srv['port'] = 6667
             if 'cmdurl' not in srv:
                 srv['cmdurl'] = None
-            if 'authuser' not in srv:
-                srv['authuser'] = ""
-            if 'authmessage' not in srv:
-                srv['authmessage'] = ""
+            if 'onconnect' not in srv:
+                srv['onconnect'] = ""
 
             if key in servers:
                 if dumps(servers[key].getConfig()) == dumps(srv):
@@ -302,7 +309,7 @@ def reloadConfig(url, servers):
             servers[key] = IRCConnectionManager(key,
                     srv['channels'], srv['nick'], srv['realname'],
                     srv['username'], srv['password'],
-                    srv['authuser'], srv['authmessage'])
+                    srv['onconnect'])
 
             servers[key].setBot(createBot(servers[key], srv))
             servers[key].setConnection(reactor.connectTCP(
