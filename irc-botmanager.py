@@ -290,12 +290,7 @@ def reloadConfig(url, servers):
 
             if key in servers:
                 if deep_eq(servers[key].getConfig(), srv):
-                    print "Server " + key + " hasn't changed " + dumps(srv)
                     continue
-                else:
-                    print "Config changed!"
-                    print "   Old config: " + dumps(servers[key].getConfig())
-                    print "   New config: " + dumps(srv)
 
             # Disconnect the bot, if it exists already
             if key in servers:
