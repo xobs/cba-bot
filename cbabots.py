@@ -69,10 +69,17 @@ class BotPersonality():
 
     def sendMessage(self, message):
         """Send a message to the configured channel"""
+        print "Sending message to channel:"
+        print message
         self.connection.sendMessage(self, message)
 
     def sendPrivateMessage(self, user, message):
         """Send a direct message to a user (or a specific channel)"""
+        if user is None:
+            # This happens e.g. when a command comes from the web
+            print "Message not delivered, user was None:"
+            print message
+            return
         self.connection.sendDirectMessage(self, user, message)
 
     def receiveMessage(self, user, message):
@@ -98,13 +105,6 @@ class BotPersonality():
     def doWork(self):
         print "Error: doWork not implemented"
 
-    def parseArgsYield(self, s):
-        gen = iter(s.split('"'))
-        for unquoted in gen:
-            for part in unquoted.split():
-                yield part
-            yield gen.next().join('""')
-
     def executeCmd(self):
         cmds = {}
         if self.cmdurl is None:
@@ -117,10 +117,33 @@ class BotPersonality():
             return
 
         # Re-sort the data by timestamp
-        cmds = sorted(cmds, key=lambda cmd: cmd['id'])
+        cmds = sorted(cmds, key=lambda cmd: int(cmd['id']))
 
-        print "Most recent command: " + cmds[-1]["command"]
-        return self.adminCommand(cmds[-1]["command"])
+        # Ignore the very first command.  Since IDs are monotonically
+        # increasing, this will allow us to ignore all commands that
+        # actually happened in the past.
+        if self.lastid == 0:
+            self.lastid = int(cmds[-1]["id"])
+            return
+        print "Most recent command: " + str(cmds[-1]["command"][0])
+
+        # Make sure the new command is, indeed, new
+        if int(cmds[-1]["id"]) <= self.lastid:
+            return
+
+        # Success.  Execute the command.
+        self.lastid = int(cmds[-1]["id"])
+        arr = []
+        for arg in cmds[-1]["command"]:
+            arr.append(arg.encode('ascii', 'ignore'))
+        return self.adminCommand(None, arr)
+
+    def parseArgsYield(self, s):
+        gen = iter(s.split('"'))
+        for unquoted in gen:
+            for part in unquoted.split():
+                yield part
+            yield gen.next().join('""')
 
     def parseArgs(self, cmdline):
         l = []
@@ -128,7 +151,7 @@ class BotPersonality():
             l.append(a.lstrip('"').rstrip('"'))
         return l
 
-    def adminCommand(self, args):
+    def adminCommand(self, user, args):
         return
 
 
@@ -304,9 +327,9 @@ class GavelMaster(BotPersonality):
             self.sendPrivateMessage(user, self.youAreNotOps)
             return
 
-        return self.adminCommand(self.parseArgs(message))
+        return self.adminCommand(user, self.parseArgs(message))
 
-    def adminCommand(self, argv):
+    def adminCommand(self, user, argv):
         if not argv or len(argv) < 1:
             self.sendHelp(user)
 
@@ -479,9 +502,9 @@ class PollBoy(BotPersonality):
             self.sendPrivateMessage(user, self.youAreNotOps)
             return
 
-        return self.adminCommand(self.parseArgs(message))
+        return self.adminCommand(user, self.parseArgs(message))
 
-    def adminCommand(self, argv):
+    def adminCommand(self, user, argv):
         if not argv or len(argv) < 1:
             self.sendHelp(user)
 
@@ -520,17 +543,18 @@ class PollBoy(BotPersonality):
         totals = {}
         results = []
         for key in self.options:
-            totals[key].count = 0
-            totals[key].name = key
+            totals[key] = {}
+            totals[key]['count'] = 0
+            totals[key]['name'] = key
 
         for option in self.votes.values():
-            totals[self.options[option]] = totals[self.options[option]] + 1
+            totals[self.options[option]]['count'] = totals[self.options[option]]['count'] + 1
 
         results = sorted(totals, key=lambda tot: tot['count'])
 
         self.sendMessage(self.resultsStart)
         for tot in results:
-            self.sendMessage(self.resultsLine % (str(tot.count), tot.name))
+            self.sendMessage(self.resultsLine % (str(tot['count']), tot['name']))
         self.setPollActive(False)
 
     def addNew(self, user, argv):
