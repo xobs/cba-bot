@@ -55,7 +55,6 @@ class IRCConnection(irc.IRCClient):
             self.join(channel.encode('ascii', 'ignore'))
         if self.config.onconnect != "":
             time.sleep(2)
-            print "Sending auth command: " + self.config.onconnect
             self.sendLine(self.config.onconnect)
         self.config.bot.resumeBot()
 
