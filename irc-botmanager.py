@@ -11,6 +11,7 @@ from collections import defaultdict
 from json import loads, dumps
 import locale
 import os
+import signal
 import random
 import time
 from twisted.words.protocols import irc
