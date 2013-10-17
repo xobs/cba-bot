@@ -352,14 +352,10 @@ if __name__ == '__main__':
         print "WARNING: en_US.utf8 locale not found falling back to 'C'"
         locale.setlocale(locale.LC_ALL, 'C')
 
-    # Attach a signal handler in debug mode, so Ctrl-C worls
-    if config['DEBUG']:
-        import signal, sys
-        print "Debug mode detected, installing signal handler"
-        def handle_ctrlc(signal, frame):
-            print 'SIGINT hit, quitting...'
-            os._exit(0)
-        signal.signal(signal.SIGINT, handle_ctrlc)
+    def handle_ctrlc(signal, frame):
+        print 'SIGINT hit, quitting...'
+        os._exit(0)
+    signal.signal(signal.SIGINT, handle_ctrlc)
 
 
     # Connect to each server defined in IRCSERVERS
