@@ -84,6 +84,9 @@ not execute any commands.  However, on subsequent polls, it will look for an id
 that is greater than this id, and execute the corresponding command.  If more
 than one id is larger, then it will only execute the largest id found.
 
+Bots support the ability to send a command to a user on startup.  This can
+be used to authenticate a user with an authorization bot.
+
 
 Donbot
 ------
