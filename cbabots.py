@@ -180,10 +180,10 @@ class DonBot(BotPersonality):
         # Load data from the URL.  If the primary key is new, add it to the
         # new_data list.  We'll sort this list by time afterwards and post
         # the oldest message.
-        print "No data found in cache.  Fetching..."
         data = loads(urlopen(self.url).read())
         for donation in data:
-            timestamp = strict_rfc3339.rfc3339_to_timestamp(donation['time'])
+            timestamp = strict_rfc3339.rfc3339_to_timestamp(donation['time'] \
+                    + "-08:00")
             donation['timestamp'] = timestamp
             if donation['pk'] not in self.seen_keys:
                 self.new_data.append(donation)
@@ -191,6 +191,7 @@ class DonBot(BotPersonality):
         # Re-sort the data by timestamp
         self.new_data = sorted(self.new_data,
                                 key=lambda donation: donation['timestamp'])
+        self.new_data.reverse()
 
         # Special startup code.  If seen_keys is empty and we have new data,
         # stuff all but the last /reportlast/ variables into the "seen_keys"
@@ -203,13 +204,21 @@ class DonBot(BotPersonality):
             # If an object is ignored, put its pk in the seen_keys set.
             now = time.time()
             for obj in self.new_data:
-                if (now - obj['timestamp']) < self.ignoreolderthan \
-                    and len(trimmed_list) < self.reportlast:
-                    trimmed_list.append(obj)
-                else:
+                newobj = {}
+                newobj['timestamp'] = obj['timestamp']
+                newobj['name']      = obj['name'].encode('ascii', 'ignore')
+                newobj['amount']    = obj['amount'].encode('ascii', 'ignore')
+                newobj['game']      = obj['game'].encode('ascii', 'ignore')
+                newobj['pk']        = obj['pk']
+                if (now - float(obj['timestamp'])) >= self.ignoreolderthan:
                     self.seen_keys.add(obj['pk'])
+                elif len(trimmed_list) >= self.reportlast:
+                    self.seen_keys.add(obj['pk'])
+                else:
+                    trimmed_list.append(newobj)
 
             self.new_data = trimmed_list
+            self.new_data.reverse()
             
         self.sendNextMessage()
 
@@ -231,10 +240,10 @@ class DonBot(BotPersonality):
                         + donation['amount'] + " to play " + donation['game'])
         else:
             if donation['game'] == "":
-                self.sendMessage(donation['name'] 
+                self.sendMessage(donation['name']
                         + " just donated $" + donation['amount'])
             else:
-                self.sendMessage(donation['name'] 
+                self.sendMessage(donation['name']
                         + " just donated $" + donation['amount']
                         + " to play " + donation['game'])
         return True
