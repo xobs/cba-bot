@@ -58,6 +58,8 @@ All bots accept the following variables:
 * **variance**: In order to keep things interesting, a random number of
 seconds (between 0 and *variance*) to add to the interval on each loop.
 * **cmdurl**: A path to a JSON file containing bot commands.
+* **authuser**: The name of a user to /MSG upon successful connection.
+* **authmessage**: The contents of a message to send to that user.
 
 All bots support a "cmdurl" flag, though it really only makes sense for
 interactive bots.  You may supply a URL from which commands will occasionally be

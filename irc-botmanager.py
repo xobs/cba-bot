@@ -50,6 +50,9 @@ class IRCConnection(irc.IRCClient):
     def signedOn(self):
         for channel in self.config.channels:
             self.join(channel.encode('ascii', 'ignore'))
+        if self.config.authuser != "" and self.config.authmessage != "":
+            irc.IRCClient.msg(self,
+                    self.config.authuser, self.config.authmessage)
         self.config.bot.resumeBot()
 
     def joinedResult(things, args):
@@ -165,12 +168,14 @@ class IRCConnectionManager(protocol.ClientFactory):
     bot = None
 
     def __init__(self, name, channels, nickname, realname,
-            username, password):
+            username, password, authuser, authmessage):
         # Data must not be unicode, otherwise Twisted will crash
         self.nickname = nickname.encode('ascii', 'ignore')
         self.realname = realname.encode('ascii', 'ignore')
         self.username = username.encode('ascii', 'ignore')
         self.password = password.encode('ascii', 'ignore')
+        self.authuser  = authuser.encode('ascii', 'ignore')
+        self.authmessage  = authmessage.encode('ascii', 'ignore')
         self.channels = []
         for channel in channels:
             self.channels.append(channel.encode('ascii', 'ignore'))
@@ -271,6 +276,10 @@ def reloadConfig(url, servers):
                 srv['port'] = 6667
             if 'cmdurl' not in srv:
                 srv['cmdurl'] = None
+            if 'authuser' not in srv:
+                srv['authuser'] = ""
+            if 'authmessage' not in srv:
+                srv['authmessage'] = ""
 
             if key in servers:
                 if dumps(servers[key].getConfig()) == dumps(srv):
@@ -292,7 +301,8 @@ def reloadConfig(url, servers):
 
             servers[key] = IRCConnectionManager(key,
                     srv['channels'], srv['nick'], srv['realname'],
-                    srv['username'], srv['password'])
+                    srv['username'], srv['password'],
+                    srv['authuser'], srv['authmessage'])
 
             servers[key].setBot(createBot(servers[key], srv))
             servers[key].setConnection(reactor.connectTCP(
