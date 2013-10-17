@@ -20,6 +20,7 @@ from twisted.internet import defer
 from urllib2 import urlopen
 import cbabots
 from threading import Thread, Event
+from deep_eq import deep_eq
 
 
 # Load default values, for when the environment is not present
@@ -288,7 +289,8 @@ def reloadConfig(url, servers):
                 srv['onconnect'] = ""
 
             if key in servers:
-                if dumps(servers[key].getConfig()) == dumps(srv):
+                if deep_eq(servers[key].getConfig(), srv):
+                    print "Server " + key + " hasn't changed " + dumps(srv)
                     continue
                 else:
                     print "Config changed!"
@@ -342,9 +344,10 @@ class ConfigReloader(Thread):
 
     def run(self):
         while not self.stopped.wait(self.period):
-            try:
+#            try:
+                print "Reloading config..."
                 reloadConfig(self.configUrl, self.servers)
-            except:
+#            except:
                 pass
 
 if __name__ == '__main__':
