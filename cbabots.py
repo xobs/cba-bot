@@ -123,7 +123,11 @@ class BotPersonality():
         # increasing, this will allow us to ignore all commands that
         # actually happened in the past.
         if self.lastid == 0:
-            self.lastid = int(cmds[-1]["id"])
+            if len(cmds) > 0:
+                self.lastid = int(cmds[-1]["id"])
+            return
+
+        if len(cmds) == 0:
             return
 
         # Make sure the new command is, indeed, new
