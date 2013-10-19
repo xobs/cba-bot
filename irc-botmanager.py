@@ -178,13 +178,21 @@ class IRCConnectionManager(protocol.ClientFactory):
     new IRCConnection to manage it."""
 
     def __init__(self, name, channels, nickname, realname,
-            username, password, onconnect):
+            username, password, onconnect, hostname, servername):
         # Data must not be unicode, otherwise Twisted will crash
         self.nickname   = nickname.encode('ascii', 'ignore')
         self.realname   = realname.encode('ascii', 'ignore')
-        self.username   = username.encode('ascii', 'ignore')
-        self.password   = password.encode('ascii', 'ignore')
-        self.onconnect  = onconnect.encode('ascii', 'ignore')
+        self.hostname   = hostname.encode('ascii', 'ignore')
+        self.servername = servername.encode('ascii', 'ignore')
+        self.username   = username
+        if username is not None:
+            self.username   = self.username.encode('ascii', 'ignore')
+        self.password   = password
+        if password is not None:
+            self.password   = self.password.encode('ascii', 'ignore')
+        self.onconnect  = onconnect
+        if onconnect is not None:
+            self.onconnect  = self.onconnect.encode('ascii', 'ignore')
         self.channels   = []
         self.connection = None
         self.config     = None
@@ -230,6 +238,10 @@ class IRCConnectionManager(protocol.ClientFactory):
         p.config = self
         p.nickname = self.nickname
         p.realname = self.realname
+        p.username = self.username
+        p.password = self.password
+        p.hostname = self.hostname
+        p.servername = self.servername
         return p
 
     def clientConnectionLost(self, connector, reason):
@@ -304,9 +316,9 @@ def reloadConfig(url, servers):
             if 'interval' not in srv:
                 srv['interval'] = 120
             if 'username' not in srv:
-                srv['username'] = ''
+                srv['username'] = None
             if 'password' not in srv:
-                srv['password'] = ''
+                srv['password'] = None
             if 'port' not in srv:
                 srv['port'] = 6667
             if 'cmdurl' not in srv:
@@ -331,7 +343,8 @@ def reloadConfig(url, servers):
             servers[key] = IRCConnectionManager(key,
                     srv['channels'], srv['nick'], srv['realname'],
                     srv['username'], srv['password'],
-                    srv['onconnect'])
+                    srv['onconnect'],
+                    srv['host'], srv['host'])
 
             servers[key].setBot(createBot(servers[key], srv))
             servers[key].setConnection(reactor.connectTCP(
