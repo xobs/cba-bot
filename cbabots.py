@@ -179,7 +179,7 @@ class DonBot(BotPersonality):
         data = loads(urlopen(self.url).read())
         for donation in data:
             timestamp = strict_rfc3339.rfc3339_to_timestamp(donation['time'] \
-                    + "-08:00")
+                    + "-07:00")
             donation['timestamp'] = timestamp
             if donation['pk'] not in self.seen_keys:
                 self.new_data.append(donation)
