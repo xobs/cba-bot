@@ -12,19 +12,17 @@ import strict_rfc3339
 
 class BotPersonality():
     """Common interface for various bot personalities"""
-    running = False
-    lastid = 0
-    name = None
-    fetch_thread = None
 
     def __init__(self, connection, interval, variance, cmdurl):
-        self.name       = self.__class__.__name__
-        self.connection = connection
-        self.running    = False
-        self.interval   = interval
-        self.variance   = variance
-        self.opsets     = {}
-        self.cmdurl     = cmdurl
+        self.name         = self.__class__.__name__
+        self.connection   = connection
+        self.running      = False
+        self.interval     = interval
+        self.variance     = variance
+        self.opsets       = {}
+        self.cmdurl       = cmdurl
+        self.lastid       = 0
+        self.fetch_thread = None
         print "BotPersonality activate!  Form of: " + self.name
 
     def setConnection(self, connection):
@@ -69,8 +67,6 @@ class BotPersonality():
 
     def sendMessage(self, message):
         """Send a message to the configured channel"""
-        print "Sending message to channel:"
-        print message
         self.connection.sendMessage(self, message)
 
     def sendPrivateMessage(self, user, message):
@@ -591,3 +587,34 @@ class PollBoy(BotPersonality):
             del self.votes[argv[1]]
         else:
             self.sendMessage("User " + argv[1] + " hasn't voted")
+
+class Bottob(BotPersonality):
+    """Mirror messages between all configured bottob bots"""
+    activeBottobs = set()
+
+    def __init__(self, connection, interval, variance, cmdurl):
+        BotPersonality.__init__(self, connection, interval,
+                                variance, cmdurl)
+
+    def doWork(self):
+        pass
+
+    def pauseBot(self):
+        BotPersonality.pauseBot(self)
+        self.activeBottobs.discard(self)
+
+    def resumeBot(self):
+        BotPersonality.resumeBot(self)
+        self.activeBottobs.add(self)
+
+    def receiveMessage(self, user, message):
+        print "Received message from " + user + ": " + message
+        # Ignore messages from ourselves.
+        if user == self.connection.getNick():
+            return
+
+        # Send a message to all other active bots
+        for bot in self.activeBottobs:
+            if bot.connection.getName() == self.connection.getName():
+                continue
+            bot.sendMessage(user + ": " + message)

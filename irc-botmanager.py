@@ -39,13 +39,14 @@ if "BOTS" not in config:
 
 class IRCConnection(irc.IRCClient):
     """Handle one connection to a server, in one or more channels"""
-    active_channels = set()
     CHANNEL_PREFIXES = '&#!+'
     OPS_PREFIXES = '%@&~' # Halfop, Op, Admin, and Owner
-    _namescallback = {}
 
     def connectionMade(self):
+        self.active_channels = set()
+        self._namescallback = {}
         time.sleep(2)
+        self.nick = self.nickname
         irc.IRCClient.connectionMade(self)
         self.config.bot.setConnection(self)
 
@@ -59,6 +60,15 @@ class IRCConnection(irc.IRCClient):
             time.sleep(2)
             self.sendLine(self.config.onconnect)
         self.config.bot.resumeBot()
+
+    def getName(self):
+        return self.config.getName()
+
+    def getNick(self):
+        return self.nick
+
+    def nickChanged(self, nick):
+        self.nick = nick
 
     def joinedResult(things, args):
         (self, channel, users) = args
@@ -104,8 +114,6 @@ class IRCConnection(irc.IRCClient):
     def privmsg(self, user, channel, msg):
         othernick = user.split("!")[0]
         found_channel = False
-
-        print "Received a private message from " + user + " on channel " + channel + ": " + msg
 
         # Make sure the received message is from an active channel
         for active_channel in self.active_channels:
@@ -168,21 +176,22 @@ class IRCConnection(irc.IRCClient):
 class IRCConnectionManager(protocol.ClientFactory):
     """Each time there's a new IRC connection, this class will create a
     new IRCConnection to manage it."""
-    connection = None
-    config = None
-    should_reconnect = True
-    clock = None
-    bot = None
 
     def __init__(self, name, channels, nickname, realname,
             username, password, onconnect):
         # Data must not be unicode, otherwise Twisted will crash
-        self.nickname = nickname.encode('ascii', 'ignore')
-        self.realname = realname.encode('ascii', 'ignore')
-        self.username = username.encode('ascii', 'ignore')
-        self.password = password.encode('ascii', 'ignore')
+        self.nickname   = nickname.encode('ascii', 'ignore')
+        self.realname   = realname.encode('ascii', 'ignore')
+        self.username   = username.encode('ascii', 'ignore')
+        self.password   = password.encode('ascii', 'ignore')
         self.onconnect  = onconnect.encode('ascii', 'ignore')
-        self.channels = []
+        self.channels   = []
+        self.connection = None
+        self.config     = None
+        self.should_reconnect = True
+        self.clock      = None
+        self.bot        = None
+        self.name       = ""
         for channel in channels:
             self.channels.append(channel.encode('ascii', 'ignore'))
 
@@ -197,11 +206,17 @@ class IRCConnectionManager(protocol.ClientFactory):
     def setConfig(self, config):
         self.config = config
 
+    def setName(self, name):
+        self.name = name
+
     def getConnection(self):
         return self.connection
 
     def getConfig(self):
         return self.config
+
+    def getName(self):
+        return self.name
 
     def stopReconnecting(self):
         self.should_reconnect = False
@@ -246,19 +261,27 @@ class IRCConnectionManager(protocol.ClientFactory):
 def createBot(connectionManager, srv):
     if srv['personality'] == "donbot":
         return cbabots.DonBot(connectionManager,
-                                srv['interval'], srv['variance'], srv['cmdurl'],
+                                srv['interval'], srv['variance'],
+                                srv['cmdurl'],
                                 srv['url'],
                                 srv['reportlast'], srv['ignoreolderthan'])
     elif srv['personality'] == "microtron":
         return cbabots.MicroTron(connectionManager,
-                                srv['interval'], srv['variance'], srv['cmdurl'],
+                                srv['interval'], srv['variance'],
+                                srv['cmdurl'],
                                 srv['message'].encode('ascii', 'ignore'))
     elif srv['personality'] == "gavelmaster":
         return cbabots.GavelMaster(connectionManager,
-                                srv['interval'], srv['variance'], srv['cmdurl'])
+                                srv['interval'], srv['variance'],
+                                srv['cmdurl'])
     elif srv['personality'] == "pollboy":
         return cbabots.PollBoy(connectionManager,
-                                srv['interval'], srv['variance'], srv['cmdurl'])
+                                srv['interval'], srv['variance'],
+                                srv['cmdurl'])
+    elif srv['personality'] == "bottob":
+        return cbabots.Bottob(connectionManager,
+                                srv['interval'], srv['variance'],
+                                srv['cmdurl'])
     else:
         raise Exception("Unknown or missing bot personality: "
                 + srv['personality'])
@@ -277,7 +300,9 @@ def reloadConfig(url, servers):
             seen_bots.add(key)
             # Set up defaults for parameters that are undefined in the bot
             if 'variance' not in srv:
-                srv['variance'] = 0
+                srv['variance'] = 1
+            if 'interval' not in srv:
+                srv['interval'] = 120
             if 'username' not in srv:
                 srv['username'] = ''
             if 'password' not in srv:
@@ -314,6 +339,7 @@ def reloadConfig(url, servers):
                                     srv['port'],
                                     servers[key]))
             servers[key].setConfig(srv)
+            servers[key].setName(key)
 #        except:
 #            pass
 

@@ -159,8 +159,22 @@ description to a poll option, send:
 
 * **personality**: Must be set to "pollboy"
 
-Debugging
+Bottob
 ---------
+
+Bottob will connect to a specified IRC server, and will monitor all messages in
+a room.  Any messages received will be replicated to other instances of Bottob.
+
+You can create an IRC bridge by configuring multiple bottob instances to connect
+to mulltiple chat rooms or chat servers.
+
+TODO: One bottob instance will currently not replicate messages to multiple
+chatrooms in the same instance.  To replicate messages between rooms on the same
+server, create two instances of bottob and have them both connect to the same
+server.
+
+Debugging
+=========
 
 It is probably desirable to debug bots on your own IRC server.  Crashes and
 the like will mean frequent reconnects, and this can trigger a server's
