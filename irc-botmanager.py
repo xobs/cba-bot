@@ -93,7 +93,12 @@ class IRCConnection(irc.IRCClient):
 
     def sendMessage(self, bot, message):
         for channel in self.active_channels:
-            irc.IRCClient.msg(self, channel, message)
+            # Hack for printing blank messages
+            if len(message.split()) == 0:
+                fmt = 'PRIVMSG %s :' % (channel,)
+                irc.IRCClient.sendLine(self, fmt + message)
+            else:
+                irc.IRCClient.msg(self, channel, message)
 
     def sendDirectMessage(self, bot, user, message):
         irc.IRCClient.msg(self, user, message)
