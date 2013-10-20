@@ -67,7 +67,7 @@ class BotPersonality():
 
     def sendMessage(self, message):
         """Send a message to the configured channel"""
-        self.connection.sendMessage(self, message)
+        self.connection.sendMessage(self, message.encode('ascii', 'ignore'))
 
     def sendPrivateMessage(self, user, message):
         """Send a direct message to a user (or a specific channel)"""
@@ -76,7 +76,7 @@ class BotPersonality():
             print "Message not delivered, user was None:"
             print message
             return
-        self.connection.sendDirectMessage(self, user, message)
+        self.connection.sendDirectMessage(self, user, message.encode('ascii', 'ignore'))
 
     def receiveMessage(self, user, message):
         """Called when a user or channel emits a message"""
