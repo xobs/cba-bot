@@ -161,7 +161,7 @@ class DonBot(BotPersonality):
     newAnonymous = "An anonymous benefactor just doated $%s, bringing our total to $%s"
     newAnonymousGame = "A mysterious benefactor just donated $%s to play %s, bringing our total to $%s" 
     newNonymous = "%s just donated $%s, bringing our total to $%s"
-    newNonymousGame = "%s just donated $%s to play %s, brining our total to $%s"
+    newNonymousGame = "%s just donated $%s to play %s, bringing our total to $%s"
 
     def __init__(self, connection, interval, variance, cmdurl,
             url, reportlast=5, ignoreolderthan=3600):
@@ -220,6 +220,9 @@ class DonBot(BotPersonality):
 
             self.new_data = trimmed_list
             self.new_data.reverse()
+            print "We're starting up.  Going to announce, in order:"
+            for don in self.new_data:
+                print "Total: $%s  Name: %s" % (don['total'], don['name'])
             
         self.sendNextMessage()
 
