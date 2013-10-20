@@ -158,6 +158,10 @@ class DonBot(BotPersonality):
     """Monitor donations and announce them as they come in"""
     seen_keys = set()
     new_data = []
+    newAnonymous = "An anonymous benefactor just doated $%s, bringing our total to $%s"
+    newAnonymousGame = "A mysterious benefactor just donated $%s to play %s, bringing our total to $%s" 
+    newNonymous = "%s just donated $%s, bringing our total to $%s"
+    newNonymousGame = "%s just donated $%s to play %s, brining our total to $%s"
 
     def __init__(self, connection, interval, variance, cmdurl,
             url, reportlast=5, ignoreolderthan=3600):
@@ -205,6 +209,7 @@ class DonBot(BotPersonality):
                 newobj['name']      = obj['name'].encode('ascii', 'ignore')
                 newobj['amount']    = obj['amount'].encode('ascii', 'ignore')
                 newobj['game']      = obj['game'].encode('ascii', 'ignore')
+                newobj['total']     = obj['total'].encode('ascii', 'ignore')
                 newobj['pk']        = obj['pk']
                 if (now - float(obj['timestamp'])) >= self.ignoreolderthan:
                     self.seen_keys.add(obj['pk'])
@@ -229,19 +234,22 @@ class DonBot(BotPersonality):
 
         if donation['name'] == "":
             if donation['game'] == "":
-                self.sendMessage("An anonymous benefactor just doated $" 
-                        + donation['amount'])
+                self.sendMessage(self.newAnonymous % (donation['amount'],
+                                                      donation['total']))
             else:
-                self.sendMessage("A mysterious person just donated $" 
-                        + donation['amount'] + " to play " + donation['game'])
+                self.sendMessage(self.newAnonymousGame % (donation['amount'],
+                                                          donation['game'],
+                                                          donation['total']))
         else:
             if donation['game'] == "":
-                self.sendMessage(donation['name']
-                        + " just donated $" + donation['amount'])
+                self.sendMessage(self.newNonymous % (donation['name'],
+                                                     donation['amount'],
+                                                      donation['total']))
             else:
-                self.sendMessage(donation['name']
-                        + " just donated $" + donation['amount']
-                        + " to play " + donation['game'])
+                self.sendMessage(self.newNonymousGame % (donation['name'],
+                                                         donation['amount'],
+                                                         donation['game'],
+                                                         donation['total']))
         return True
 
 
