@@ -193,7 +193,6 @@ class DonBot(BotPersonality):
         # Re-sort the data by timestamp
         self.new_data = sorted(self.new_data,
                                 key=lambda donation: donation['timestamp'])
-        self.new_data.reverse()
 
         # Special startup code.  If seen_keys is empty and we have new data,
         # stuff all but the last /reportlast/ variables into the "seen_keys"
@@ -221,7 +220,6 @@ class DonBot(BotPersonality):
                     trimmed_list.append(newobj)
 
             self.new_data = trimmed_list
-            self.new_data.reverse()
             print "We're starting up.  Going to announce, in order:"
             for don in self.new_data:
                 print "Total: $%s  Name: %s" % (don['total'], don['name'])
