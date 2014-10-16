@@ -351,15 +351,16 @@ def reloadConfig(url, servers):
                     srv['onconnect'],
                     srv['host'], srv['host'])
 
-            servers[key].setBot(createBot(servers[key], srv))
-            servers[key].setConnection(reactor.connectTCP(
-                                    srv['host'],
-                                    srv['port'],
-                                    servers[key]))
-            servers[key].setConfig(srv)
-            servers[key].setName(key)
-#        except:
-#            pass
+            try:
+                servers[key].setBot(createBot(servers[key], srv))
+                servers[key].setConnection(reactor.connectTCP(
+                                        srv['host'],
+                                        srv['port'],
+                                        servers[key]))
+                servers[key].setConfig(srv)
+                servers[key].setName(key)
+            except:
+                pass
 
     # If a bot has disappeared from the config, disconnect it.
     for key in servers.keys():
