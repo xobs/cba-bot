@@ -88,7 +88,9 @@ class BotPersonality():
 
     def queueBot(self):
         """Queue the fetch function to run agan after 'interval' seconds"""
-        delay = self.interval + random.randrange(self.variance)
+        delay = int(self.interval)
+        if (int(self.variance)):
+            delay = delay + random.randrange(int(self.variance))
         self.fetch_thread = threading.Timer(delay, self.doWorkRequeue)
         self.fetch_thread.start()
 
